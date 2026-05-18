@@ -10,12 +10,24 @@ import "github.com/AtesIsf/monetary-simulator/internal/core"
 
 type Bank struct {
 	id core.AgentId
+	debt uint32 // for simplicity, banks can only borrow from the central bank
+	loans []Loan
+	liabilities uint32
+}
+
+type Loan struct {
+	from core.AgentId
+	to core.AgentId
+	initialAmount uint32
+	installment uint32
+	interest uint32
 }
 
 func NewBank(id uint32) *Bank {
 	var b Bank
 	b.id.AType = core.Bank
 	b.id.Id = id
+	b.debt = 0
 	return &b
 }
 

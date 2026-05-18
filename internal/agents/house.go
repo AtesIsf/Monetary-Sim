@@ -1,6 +1,10 @@
 package agents
 
-import "github.com/AtesIsf/monetary-simulator/internal/core"
+import (
+	"math/rand/v2"
+
+	"github.com/AtesIsf/monetary-simulator/internal/core"
+)
 
 /*
  * house.go
@@ -11,12 +15,28 @@ import "github.com/AtesIsf/monetary-simulator/internal/core"
 
 type Household struct {
 	id core.AgentId
+	// MPC = dC/dY
+	mpcY float64 // from recent income -> high
+	mpcB float64 // from balance -> low
+	c0 uint32 // autonomoues consumption
 }
+
+// Total consumption: mpcY * Y + mpcB * B + c0
 
 func NewHousehold(id uint32) *Household {
 	var house Household
 	house.id.AType = core.Household
 	house.id.Id = id
+
+	// TODO: you may want to change these later idk
+	house.mpcY = float64(rand.IntN(4)) / 10
+	house.mpcY += house.mpcY + 0.6 // 0.6 <= mpcY <= 0.9
+
+	house.mpcB = float64(rand.IntN(4)) / 100
+	house.mpcB += house.mpcY + 0.02 // 0.02 <= mpcB <= 0.05
+
+	house.c0 = uint32(rand.IntN(5)) + 1
+
 	return &house
 }
 

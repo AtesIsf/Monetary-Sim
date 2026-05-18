@@ -1,6 +1,10 @@
 package agents
 
-import "github.com/AtesIsf/monetary-simulator/internal/core"
+import (
+	"math/rand/v2"
+
+	"github.com/AtesIsf/monetary-simulator/internal/core"
+)
 
 /*
  * firm.go
@@ -10,12 +14,19 @@ import "github.com/AtesIsf/monetary-simulator/internal/core"
 
 type Firm struct {
 	id core.AgentId
+	invTarget uint32 // targeted inventory, measured in monetary units
+	invCurr uint32 // current sold inventory
 }
 
 func NewFirm(id uint32) *Firm {
 	var f Firm
 	f.id.AType = core.Firm
 	f.id.Id = id
+
+	// TODO: You may want to change how the target is set in the future
+	f.invTarget = uint32(rand.IntN(10000)) + 10000 // 10k <= target <= 20k
+	f.invCurr = 0
+
 	return &f
 }
 

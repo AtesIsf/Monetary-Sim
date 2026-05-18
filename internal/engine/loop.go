@@ -22,27 +22,36 @@ type Simulation struct {
 	ld core.Ledger
 	pol core.Policies
 	agents []core.Agent
+	bank agents.Bank
 	tick uint64
 }
 
-func (sim *Simulation) Populate(nHouses uint32, nFirms uint32, nBanks uint32) {
-	sim.tick = 0
-	sim.ld.Populate(nHouses + nFirms + nBanks)
-	sim.pol.Populate()
-	sim.agents = make([]core.Agent, 0, nHouses + nFirms + nBanks)
+func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
+	var totalAgents uint32 = nFirms + nHouses + 1
 
-	idCounter := 0
+	sim.tick = 0
+	sim.ld.Populate(totalAgents)
+	sim.pol.Populate()
+	sim.agents = make([]core.Agent, 0, totalAgents)
+
+	var idCounter uint32 = 0
+	sim.bank = *agents.NewBank(idCounter)
+	idCounter += 1
 	for range nHouses {
-		sim.agents = append(sim.agents, agents.NewHousehold(uint32(idCounter)))
+		sim.agents = append(sim.agents, agents.NewHousehold(idCounter))
 		idCounter += 1
 	}
 	for range nFirms {
-		sim.agents = append(sim.agents, agents.NewFirm(uint32(idCounter)))
+		sim.agents = append(sim.agents, agents.NewFirm(idCounter))
 		idCounter += 1
 	}
-	for range nBanks {
-		sim.agents = append(sim.agents, agents.NewBank(uint32(idCounter)))
-		idCounter += 1
+	sim.agents = append(sim.agents, &sim.bank)
+
+	// Add all agents' balances as loanable funds
+	for i := range len(sim.agents) - 1 {
+		id := sim.agents[i].GetId()
+		amount := sim.ld.GetBalance(id)
+		sim.ld.AddToBalance(sim.bank.GetId(), amount)
 	}
 }
 
