@@ -1,16 +1,10 @@
 package main
 
-import (
-	"fmt"
-	"github.com/AtesIsf/monetary-simulator/internal/engine"
-	"github.com/AtesIsf/monetary-simulator/internal/agents"
-)
+import "github.com/AtesIsf/monetary-simulator/internal/engine"
 
 func main() {
-	eng := engine.Engine { }
-	agent := agents.Agent { }
-
-	fmt.Println("Hello, World!")
-	fmt.Printf("Engine: %p\n", &eng)
-	fmt.Printf("Agent: %p\n", &agent)
+	var sim engine.Simulation
+	// 10 households, 2 firms, 0 banks
+	sim.Populate(10, 2, 0)
+	sim.Run(10)
 }
