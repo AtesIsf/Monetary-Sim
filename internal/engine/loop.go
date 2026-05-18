@@ -64,8 +64,8 @@ func (sim *Simulation) Run(ticks uint32) {
 				fmt.Printf("Agent %d, Type %d, Bal: %d\n", 
 								ag.GetId(), ag.GetType(), sim.ld.GetBalance(ag.GetId()))
 			})
-			wg.Wait()
 		}
+		wg.Wait()
 		sim.tick += 1
 	}
 }
