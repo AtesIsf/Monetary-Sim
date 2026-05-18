@@ -19,6 +19,7 @@ type Household struct {
 	mpcY float64 // from recent income -> high
 	mpcB float64 // from balance -> low
 	c0 uint32 // autonomoues consumption
+	employer uint32 // id of employer
 }
 
 // Total consumption: mpcY * Y + mpcB * B + c0
@@ -27,6 +28,8 @@ func NewHousehold(id uint32) *Household {
 	var house Household
 	house.id.AType = core.Household
 	house.id.Id = id
+
+	house.employer = 0
 
 	// TODO: you may want to change these later idk
 	house.mpcY = float64(rand.IntN(4)) / 10

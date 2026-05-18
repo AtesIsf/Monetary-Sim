@@ -35,6 +35,11 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	sim.agents = make([]core.Agent, 0, totalAgents)
 
 	var idCounter uint32 = 0
+
+	sim.bank = *agents.NewBank(idCounter)
+	sim.ld.AddToBalance(sim.bank.GetId(), 0)
+	sim.agents = append(sim.agents, &sim.bank)
+
 	idCounter += 1
 	for range nHouses {
 		sim.agents = append(sim.agents, agents.NewHousehold(idCounter))
@@ -46,13 +51,13 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 		sim.ld.AddToBalance(idCounter, 500)
 		idCounter += 1
 	}
-	sim.bank = *agents.NewBank(idCounter)
-	sim.ld.AddToBalance(sim.bank.GetId(), 0)
-	sim.agents = append(sim.agents, &sim.bank)
 
 
 	// Add all agents' balances as loanable funds
-	for i := range len(sim.agents) - 1 {
+	for i := range len(sim.agents) {
+		if i == 0 {
+			continue
+		}
 		id := sim.agents[i].GetId()
 		amount := sim.ld.GetBalance(id)
 		sim.ld.AddToBalance(sim.bank.GetId(), amount)
@@ -63,15 +68,9 @@ func (sim *Simulation) Run(ticks uint32) {
 	for i := range ticks {
 		var wg sync.WaitGroup
 
-		fmt.Printf("\n---- Step %d ----\n", i)
+		fmt.Printf("\n---- Step %d ----\n", i + 1)
 		for _, ag := range sim.agents {
 			wg.Go(func() {
-				if ag.GetType() == core.Firm {
-					val, err := sim.GetRandom(core.Household)
-					if err == nil {
-						sim.ld.Transfer(ag.GetId(), val.Id, 10)
-					}
-				}
 				ag.Update(&sim.pol, &sim.ld)
 				// For debug purposes
 				fmt.Printf("Agent %d, Type %d, Bal: %d\n", 
