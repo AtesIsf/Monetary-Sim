@@ -30,22 +30,26 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	var totalAgents uint32 = nFirms + nHouses + 1
 
 	sim.tick = 0
-	sim.ld.Populate(totalAgents)
+	sim.ld.Init()
 	sim.pol.Populate()
 	sim.agents = make([]core.Agent, 0, totalAgents)
 
 	var idCounter uint32 = 0
-	sim.bank = *agents.NewBank(idCounter)
 	idCounter += 1
 	for range nHouses {
 		sim.agents = append(sim.agents, agents.NewHousehold(idCounter))
+		sim.ld.AddToBalance(idCounter, 100)
 		idCounter += 1
 	}
 	for range nFirms {
 		sim.agents = append(sim.agents, agents.NewFirm(idCounter))
+		sim.ld.AddToBalance(idCounter, 500)
 		idCounter += 1
 	}
+	sim.bank = *agents.NewBank(idCounter)
+	sim.ld.AddToBalance(sim.bank.GetId(), 0)
 	sim.agents = append(sim.agents, &sim.bank)
+
 
 	// Add all agents' balances as loanable funds
 	for i := range len(sim.agents) - 1 {

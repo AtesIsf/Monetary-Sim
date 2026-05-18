@@ -1,7 +1,6 @@
 package core
 
 import (
-	"math/rand/v2"
 	"sync"
 )
 
@@ -18,12 +17,8 @@ type Ledger struct {
 	// banks map[uint32]uint32 // maps agent id to bank id
 }
 
-// default balance is 1000-1500 for now
-func (ld *Ledger) Populate(nAgents uint32) {
+func (ld *Ledger) Init() {
 	ld.balances = make(map[uint32]int64)
-	for i := range nAgents {
-		ld.balances[i] = rand.Int64N(500) + 1000
-	}
 }
 
 func (ld *Ledger) GetBalance(id uint32) int64 {

@@ -24,7 +24,7 @@ func NewFirm(id uint32) *Firm {
 	f.id.Id = id
 
 	// TODO: You may want to change how the target is set in the future
-	f.invTarget = uint32(rand.IntN(10000)) + 10000 // 10k <= target <= 20k
+	f.invTarget = uint32(rand.IntN(100)) + 500 // 500 <= target <= 600
 	f.invCurr = 0
 
 	return &f
