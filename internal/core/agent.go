@@ -9,7 +9,7 @@ package core
 
 type Agent interface {
 	GetId() uint32
-	Update(pol *Policies, ld *Ledger) UpdateReturn
+	Update(pol *Policies, ld *Ledger, tick uint64) UpdateReturn
 	GetType() AgentType
 	Log()
 }

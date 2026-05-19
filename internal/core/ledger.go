@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"sync"
 )
 
@@ -45,5 +46,12 @@ func (ld *Ledger) Transfer(from uint32, to uint32, amount int64) {
 	// I guess this would also work for borrowing, given a negative amount
 	ld.balances[from] -= amount
 	ld.balances[to] += amount
+}
+
+func (ld *Ledger) PrintBalances() {
+	fmt.Println("\n---- Balances ----")
+	for key, value := range ld.balances {
+		fmt.Printf("Id: %d -- %d\n", key, value)
+	}
 }
 

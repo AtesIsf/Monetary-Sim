@@ -39,7 +39,7 @@ func (b *Bank) GetId() uint32 {
 	return b.id.Id
 }
 
-func (b *Bank) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
+func (b *Bank) Update(pol *core.Policies, ld *core.Ledger, ticks uint64) core.UpdateReturn {
 	return core.Nothing
 }
 

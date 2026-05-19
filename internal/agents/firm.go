@@ -45,6 +45,10 @@ func (f *Firm) PopEmployee() uint32 {
 	return id
 }
 
+func (f *Firm) GetNEmployees() int {
+	return len(f.employees)
+}
+
 // Call this after a household consumes to update invCur
 func (f *Firm) PerformSale(amount int64) {
 	f.invCurr += uint32(amount)
@@ -55,12 +59,15 @@ func (f *Firm) GetId() uint32 {
 }
 
 // TODO: Finish this
-func (f *Firm) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
+func (f *Firm) Update(pol *core.Policies, ld *core.Ledger, tick uint64) core.UpdateReturn {
 	var returnVal core.UpdateReturn = core.Nothing
+	if tick % core.TicksPerYear == 0 {
+		f.invCurr = 0 // reset tracked value since it is a new year
+	}
 
 	if f.invCurr < f.invTarget { // Underproducing, so hire
 		returnVal = core.HireWorkers
-	} else if f.invCurr > f.invTarget { // Overproducing, so fire
+	} else if f.invCurr > f.invTarget && len(f.employees) > 0 { // Overproducing
 		returnVal = core.FireWorkers
 	}
 
@@ -82,7 +89,7 @@ func (f *Firm) GetType() core.AgentType {
 }
 
 func (f *Firm) Log() {
-	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d\n", 
-							f.GetId(), f.invTarget, f.invCurr)
+	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d -- %d Employees\n", 
+							f.GetId(), f.invTarget, f.invCurr, len(f.employees))
 }
 

@@ -54,6 +54,15 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 		idCounter += 1
 	}
 
+	// Shuffle agents except the bank at index 0
+	if len(sim.agents) > 2 {
+		rand.Shuffle(len(sim.agents) - 1, func(i int, j int) {
+			temp := sim.agents[i + 1]
+			sim.agents[i + 1] = sim.agents[j + 1]
+			sim.agents[j + 1] = temp
+		})
+	}
+
 	// Add all agents' balances as loanable funds
 	for i := range len(sim.agents) {
 		if i == 0 {
@@ -65,14 +74,13 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	}
 }
 
-func (sim *Simulation) Run(ticks uint32) {
-	for i := range ticks {
+func (sim *Simulation) Run(ticks uint64) {
+	for range ticks {
 		var wg sync.WaitGroup
 
-		fmt.Printf("\n---- Step %d ----\n", i + 1)
 		for _, ag := range sim.agents {
 			wg.Go(func() {
-				result := ag.Update(&sim.pol, &sim.ld)
+				result := ag.Update(&sim.pol, &sim.ld, sim.tick)
 
 				// Handling update return here
 
@@ -105,33 +113,34 @@ func (sim *Simulation) Run(ticks uint32) {
 					amount := house.CalculateConsumption(&sim.ld)
 					// Diversify consumption later
 					randFirm, err := sim.GetRandom(core.Firm)
-					if err != nil {
-						fmt.Println("Fatal Error! No firms found.")
-						os.Exit(1)
-					}
-					sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
-					selected, err := sim.AgentWhere(randFirm.Id)
-					if err != nil {
-						fmt.Println("Fatal Error! No firms found.")
-						os.Exit(1)
-					}
-					firmAgent, _ := (*selected).(*agents.Firm)
-					firmAgent.PerformSale(amount)
+					if err == nil {
+						sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
+						selected, err := sim.AgentWhere(randFirm.Id)
+						if err != nil {
+							fmt.Println("Fatal Error! No firms found.")
+							os.Exit(1)
+						}
+						firmAgent, _ := (*selected).(*agents.Firm)
+						firmAgent.PerformSale(amount)
 
-					// TODO: Now, if the balance is less than 0, request a loan
+						// TODO: Now, if the balance is less than 0, request a loan
+
+					} // else, no firm was valid so no consumption took place
 
 				default: // result == core.Nothing, so do nothing
 				}
 
 				// For debug purposes
-				ag.Log()
-				fmt.Printf("\t>> <%d> Balance: %d\n", 
-										ag.GetId(), sim.ld.GetBalance(ag.GetId()))
+				if sim.tick == ticks - 1 {
+					ag.Log()
+				}
 			})
 		}
 		wg.Wait()
 		sim.tick += 1
 	}
+
+	sim.ld.PrintBalances()
 }
 
 // TODO: You may want to parameterize number of workers to hire
@@ -159,6 +168,34 @@ func (sim *Simulation) GetRandom(target core.AgentType) (core.AgentId, error) {
 	sim.agentsMutex.RLock()
 	defer sim.agentsMutex.RUnlock()
 
+	if target == core.Firm {
+		totalEmployees := 0
+		var eligibleFirms []*agents.Firm
+		for _, ag := range sim.agents {
+			if ag.GetType() == core.Firm {
+				firm, ok := ag.(*agents.Firm)
+				if ok && firm.GetNEmployees() > 0 {
+					totalEmployees += firm.GetNEmployees()
+					eligibleFirms = append(eligibleFirms, firm)
+				}
+			}
+		}
+
+		if totalEmployees == 0 {
+			return core.AgentId{}, errors.New("No valid firm with employees exists!")
+		}
+
+		r := rand.IntN(totalEmployees)
+		cumulative := 0
+		for _, firm := range eligibleFirms {
+			cumulative += firm.GetNEmployees()
+			if r < cumulative {
+				return core.AgentId{AType: core.Firm, Id: firm.GetId()}, nil
+			}
+		}
+	}
+
+	// If the target is a Household or Bank
 	length := len(sim.agents)
 	if length == 0 {
 		return core.AgentId{}, errors.New("No valid agent exists!")
@@ -167,16 +204,15 @@ func (sim *Simulation) GetRandom(target core.AgentType) (core.AgentId, error) {
 	index := rand.IntN(length)
 
 	for increment := range sim.agents {
-		selected := sim.agents[(index + increment) % length]
+		selected := sim.agents[(index + increment)%length]
 		if selected.GetType() == target {
-			return core.AgentId{ AType: target, Id: selected.GetId() }, nil
+			return core.AgentId{AType: target, Id: selected.GetId()}, nil
 		}
 	}
-	
+
 	fmt.Printf("GetRandom failed for target %d\n", target)
 	return core.AgentId{}, errors.New("No valid agent exists!")
 }
-
 // Returns the agent where the id equals the parameter
 func (sim *Simulation) AgentWhere(id uint32) (*core.Agent, error) {
 	for _, ag := range sim.agents {

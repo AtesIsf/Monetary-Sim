@@ -9,6 +9,9 @@ import "sync"
  * controls. It sets variables such as the reserve rate and the policy rate.
  */
 
+// Defines how many ticks there are per year
+const TicksPerYear = 12
+
 type Policies struct {
 	mutex sync.RWMutex
 	// both values below are integers between 0 and 100
