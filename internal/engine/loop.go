@@ -75,20 +75,23 @@ func (sim *Simulation) Run(ticks uint32) {
 				result := ag.Update(&sim.pol, &sim.ld)
 
 					
-				if result == core.HireWorkers {
+				switch result {
+				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
 						sim.HireWorker(firm)
 					}
-				} else if result == core.FireWorkers {
+				case core.FireWorkers:
 
-				} else if result == core.RequestLoan {
+				case core.RequestLoan:
 
-				} 
-				// else, result == core.Nothing, so do nothing
+				default: // result == core.Nothing, so do nothing
+				}
 
 				// For debug purposes
 				ag.Log()
+				fmt.Printf("\t>> <%d> Balance: %d\n", 
+										ag.GetId(), sim.ld.GetBalance(ag.GetId()))
 			})
 		}
 		wg.Wait()
@@ -96,6 +99,7 @@ func (sim *Simulation) Run(ticks uint32) {
 	}
 }
 
+// TODO: You may want to parameterize number of workers to hire
 func (sim *Simulation) HireWorker(f *agents.Firm) {
 	sim.agentsMutex.Lock()
 	defer sim.agentsMutex.Unlock()
@@ -109,9 +113,9 @@ func (sim *Simulation) HireWorker(f *agents.Firm) {
 		if house.GetEmployer() == 0 {
 			house.SetEmployer(f.GetId())
 			f.AddEmployee(ag.GetId())
+			break
 		}
 	}
-
 }
 
 // This function is to be used in phase 1, where exchanges are random

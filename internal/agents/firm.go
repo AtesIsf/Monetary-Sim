@@ -68,6 +68,7 @@ func (f *Firm) GetType() core.AgentType {
 }
 
 func (f *Firm) Log() {
-	fmt.Printf("Firm\n")
+	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d\n", 
+							f.GetId(), f.invTarget, f.invCurr)
 }
 

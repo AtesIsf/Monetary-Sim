@@ -66,6 +66,7 @@ func (h *Household) GetType() core.AgentType {
 }
 
 func (h *Household) Log() {
-	fmt.Printf("House\n")
+	fmt.Printf("House <%d> -- Employer Id: %d\n",
+							h.GetId(), h.GetEmployer())
 }
 
