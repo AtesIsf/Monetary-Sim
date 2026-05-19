@@ -54,7 +54,6 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 		idCounter += 1
 	}
 
-
 	// Add all agents' balances as loanable funds
 	for i := range len(sim.agents) {
 		if i == 0 {
@@ -107,10 +106,17 @@ func (sim *Simulation) Run(ticks uint32) {
 					// Diversify consumption later
 					randFirm, err := sim.GetRandom(core.Firm)
 					if err != nil {
-						fmt.Println("Error! No firms found.")
+						fmt.Println("Fatal Error! No firms found.")
 						os.Exit(1)
 					}
 					sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
+					selected, err := sim.AgentWhere(randFirm.Id)
+					if err != nil {
+						fmt.Println("Fatal Error! No firms found.")
+						os.Exit(1)
+					}
+					firmAgent, _ := (*selected).(*agents.Firm)
+					firmAgent.PerformSale(amount)
 
 					// TODO: Now, if the balance is less than 0, request a loan
 
@@ -169,5 +175,15 @@ func (sim *Simulation) GetRandom(target core.AgentType) (core.AgentId, error) {
 	
 	fmt.Printf("GetRandom failed for target %d\n", target)
 	return core.AgentId{}, errors.New("No valid agent exists!")
+}
+
+// Returns the agent where the id equals the parameter
+func (sim *Simulation) AgentWhere(id uint32) (*core.Agent, error) {
+	for _, ag := range sim.agents {
+		if ag.GetId() == id {
+			return &ag, nil
+		}
+	}
+	return nil, errors.New("No matching agent found.")
 }
 

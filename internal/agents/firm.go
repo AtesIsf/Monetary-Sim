@@ -45,6 +45,11 @@ func (f *Firm) PopEmployee() uint32 {
 	return id
 }
 
+// Call this after a household consumes to update invCur
+func (f *Firm) PerformSale(amount int64) {
+	f.invCurr += uint32(amount)
+}
+
 func (f *Firm) GetId() uint32 {
 	return f.id.Id
 }
