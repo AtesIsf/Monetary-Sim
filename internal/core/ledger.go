@@ -11,6 +11,9 @@ import (
  * In general terms, it records the exchange of goods, services, and funds.
  */
 
+// the amount households are paid per turn by firms
+const Wage = 20
+
 type Ledger struct {
 	mutex sync.RWMutex
 	balances map[uint32]int64 // maps agent id to balance

@@ -60,8 +60,8 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
 	}
 
 	selfId := f.GetId()
-	for id := range f.employees {
-		ld.Transfer(selfId, uint32(id), 20) // assume flat wage of 20 for now
+	for _, id := range f.employees {
+		ld.Transfer(selfId, uint32(id), core.Wage)
 	}
 
 	currBal := ld.GetBalance(f.GetId())

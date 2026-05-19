@@ -34,10 +34,10 @@ func NewHousehold(id uint32) *Household {
 
 	// TODO: you may want to change these later idk
 	house.mpcY = float64(rand.IntN(4)) / 10
-	house.mpcY += house.mpcY + 0.6 // 0.6 <= mpcY <= 0.9
+	house.mpcY +=  0.6 // 0.6 <= mpcY <= 0.9
 
 	house.mpcB = float64(rand.IntN(4)) / 100
-	house.mpcB += house.mpcY + 0.02 // 0.02 <= mpcB <= 0.05
+	house.mpcB +=  0.02 // 0.02 <= mpcB <= 0.05
 
 	house.c0 = uint32(rand.IntN(5)) + 1
 
@@ -58,11 +58,22 @@ func (h *Household) GetId() uint32 {
 }
 
 func (h *Household) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
-	return core.Nothing
+	// For now, spend all in one random firm. Diversify consumption later
+	return core.Consume
 }
 
 func (h *Household) GetType() core.AgentType {
 	return core.Household
+}
+
+func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
+	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
+	totalC := float64(h.c0) + balanceConsumption
+	
+	if h.GetEmployer() != 0 { // 0 -> unemployed
+		totalC += h.mpcY * core.Wage
+	}
+	return int64(totalC)
 }
 
 func (h *Household) Log() {

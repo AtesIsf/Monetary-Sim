@@ -16,12 +16,13 @@ type Agent interface {
 
 type UpdateReturn uint8
 const (
-	// Firm Update() Returns
 	Nothing UpdateReturn = iota
+	// Household Update() Returns
+	Consume
+	// Firm Update() Returns
 	HireWorkers
 	FireWorkers
 	RequestLoan
-	// Household Update() Returns
 	// Bank Update() Returns
 )
 

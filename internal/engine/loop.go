@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"os"
 	"sync"
 
 	"github.com/AtesIsf/monetary-simulator/internal/agents"
@@ -77,6 +78,7 @@ func (sim *Simulation) Run(ticks uint32) {
 				// Handling update return here
 
 				switch result {
+				// Firm
 				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
@@ -97,6 +99,20 @@ func (sim *Simulation) Run(ticks uint32) {
 					sim.agentsMutex.Unlock()
 
 				case core.RequestLoan:
+
+				// Household
+				case core.Consume:
+					house, _ := ag.(*agents.Household)
+					amount := house.CalculateConsumption(&sim.ld)
+					// Diversify consumption later
+					randFirm, err := sim.GetRandom(core.Firm)
+					if err != nil {
+						fmt.Println("Error! No firms found.")
+						os.Exit(1)
+					}
+					sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
+
+					// TODO: Now, if the balance is less than 0, request a loan
 
 				default: // result == core.Nothing, so do nothing
 				}
@@ -134,13 +150,20 @@ func (sim *Simulation) HireWorker(f *agents.Firm) {
 // This function is to be used in phase 1, where exchanges are random
 // It fails if there is no agents of the specified type
 func (sim *Simulation) GetRandom(target core.AgentType) (core.AgentId, error) {
+	sim.agentsMutex.RLock()
+	defer sim.agentsMutex.RUnlock()
+
 	length := len(sim.agents)
+	if length == 0 {
+		return core.AgentId{}, errors.New("No valid agent exists!")
+	}
+
 	index := rand.IntN(length)
 
 	for increment := range sim.agents {
-		selected := &sim.agents[(index + increment) % length]
-		if (*selected).GetType() == target {
-			return core.AgentId{ AType: target, Id: (*selected).GetId() }, nil
+		selected := sim.agents[(index + increment) % length]
+		if selected.GetType() == target {
+			return core.AgentId{ AType: target, Id: selected.GetId() }, nil
 		}
 	}
 	
