@@ -1,6 +1,10 @@
 package agents
 
-import "github.com/AtesIsf/monetary-simulator/internal/core"
+import (
+	"fmt"
+
+	"github.com/AtesIsf/monetary-simulator/internal/core"
+)
 
 /*
  * bank.go
@@ -35,11 +39,15 @@ func (b *Bank) GetId() uint32 {
 	return b.id.Id
 }
 
-func (b *Bank) Update(pol *core.Policies, ld *core.Ledger) error {
-	return nil
+func (b *Bank) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
+	return core.Nothing
 }
 
 func (b *Bank) GetType() core.AgentType {
 	return core.Bank
+}
+
+func (b *Bank) Log() {
+	fmt.Printf("Bank\n")
 }
 

@@ -22,6 +22,7 @@ type Simulation struct {
 	ld core.Ledger
 	pol core.Policies
 	agents []core.Agent
+	agentsMutex sync.RWMutex // used when modifying the list
 	bank agents.Bank
 	tick uint64
 }
@@ -71,15 +72,46 @@ func (sim *Simulation) Run(ticks uint32) {
 		fmt.Printf("\n---- Step %d ----\n", i + 1)
 		for _, ag := range sim.agents {
 			wg.Go(func() {
-				ag.Update(&sim.pol, &sim.ld)
+				result := ag.Update(&sim.pol, &sim.ld)
+
+					
+				if result == core.HireWorkers {
+					if ag.GetType() == core.Firm {
+						firm, _ := ag.(*agents.Firm)
+						sim.HireWorker(firm)
+					}
+				} else if result == core.FireWorkers {
+
+				} else if result == core.RequestLoan {
+
+				} 
+				// else, result == core.Nothing, so do nothing
+
 				// For debug purposes
-				fmt.Printf("Agent %d, Type %d, Bal: %d\n", 
-								ag.GetId(), ag.GetType(), sim.ld.GetBalance(ag.GetId()))
+				ag.Log()
 			})
 		}
 		wg.Wait()
 		sim.tick += 1
 	}
+}
+
+func (sim *Simulation) HireWorker(f *agents.Firm) {
+	sim.agentsMutex.Lock()
+	defer sim.agentsMutex.Unlock()
+
+	for _, ag := range sim.agents {
+		if ag.GetType() != core.Household {
+			continue
+		}
+
+		house, _ := ag.(*agents.Household)
+		if house.GetEmployer() == 0 {
+			house.SetEmployer(f.GetId())
+			f.AddEmployee(ag.GetId())
+		}
+	}
+
 }
 
 // This function is to be used in phase 1, where exchanges are random

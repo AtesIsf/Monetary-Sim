@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"fmt"
 	"math/rand/v2"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
@@ -43,15 +44,28 @@ func NewHousehold(id uint32) *Household {
 	return &house
 }
 
+// If 0, then there is no employer --> Thats the bank
+func (h *Household) GetEmployer() uint32 {
+	return h.employer
+}
+
+func (h *Household) SetEmployer(id uint32) {
+	h.employer = id
+}
+
 func (h *Household) GetId() uint32 {
 	return h.id.Id
 }
 
-func (h *Household) Update(pol *core.Policies, ld *core.Ledger) error {
-	return nil
+func (h *Household) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
+	return core.Nothing
 }
 
 func (h *Household) GetType() core.AgentType {
 	return core.Household
+}
+
+func (h *Household) Log() {
+	fmt.Printf("House\n")
 }
 

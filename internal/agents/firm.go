@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"fmt"
 	"math/rand/v2"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
@@ -31,16 +32,22 @@ func NewFirm(id uint32) *Firm {
 	return &f
 }
 
+func (f *Firm) AddEmployee(id uint32) {
+	f.employees = append(f.employees, id)
+}
+
 func (f *Firm) GetId() uint32 {
 	return f.id.Id
 }
 
 // TODO: Finish this
-func (f *Firm) Update(pol *core.Policies, ld *core.Ledger) error {
+func (f *Firm) Update(pol *core.Policies, ld *core.Ledger) core.UpdateReturn {
+	var returnVal core.UpdateReturn = core.Nothing
+
 	if f.invCurr < f.invTarget { // Underproducing, so hire
-
+		returnVal = core.HireWorkers
 	} else if f.invCurr > f.invTarget { // Overproducing, so fire
-
+		returnVal = core.FireWorkers
 	}
 
 	selfId := f.GetId()
@@ -50,13 +57,17 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger) error {
 
 	currBal := ld.GetBalance(f.GetId())
 	if currBal < 0 { // take out a loan
-
+		returnVal = core.RequestLoan
 	}
 
-	return nil
+	return returnVal
 }
 
 func (f *Firm) GetType() core.AgentType {
 	return core.Firm
+}
+
+func (f *Firm) Log() {
+	fmt.Printf("Firm\n")
 }
 
