@@ -74,14 +74,27 @@ func (sim *Simulation) Run(ticks uint32) {
 			wg.Go(func() {
 				result := ag.Update(&sim.pol, &sim.ld)
 
-					
+				// Handling update return here
+
 				switch result {
 				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
 						sim.HireWorker(firm)
 					}
+
 				case core.FireWorkers:
+					firm, _ := ag.(*agents.Firm)
+					id := firm.PopEmployee()
+					sim.agentsMutex.Lock()
+					for _, a := range sim.agents {
+						if a.GetType() == core.Household && a.GetId() == id {
+							house, _ := a.(*agents.Household)
+							house.SetEmployer(0) // 0 is the bank, so no employer
+							break
+						}
+					}
+					sim.agentsMutex.Unlock()
 
 				case core.RequestLoan:
 

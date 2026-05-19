@@ -3,6 +3,7 @@ package agents
 import (
 	"fmt"
 	"math/rand/v2"
+	"slices"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
 )
@@ -34,6 +35,14 @@ func NewFirm(id uint32) *Firm {
 
 func (f *Firm) AddEmployee(id uint32) {
 	f.employees = append(f.employees, id)
+}
+
+// Removes a random employee and returns its id
+func (f *Firm) PopEmployee() uint32 {
+	randomIndex := rand.IntN(len(f.employees))
+	id := f.employees[randomIndex]
+	f.employees = slices.Delete(f.employees, randomIndex, randomIndex + 1)
+	return id
 }
 
 func (f *Firm) GetId() uint32 {
