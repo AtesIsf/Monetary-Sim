@@ -154,7 +154,7 @@ func (sim *Simulation) HireWorker(f *agents.Firm) {
 		}
 
 		house, _ := ag.(*agents.Household)
-		if house.GetEmployer() == 0 {
+		if !house.IsEmployed() {
 			house.SetEmployer(f.GetId())
 			f.AddEmployee(ag.GetId())
 			break

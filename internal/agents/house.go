@@ -29,8 +29,7 @@ func NewHousehold(id uint32) *Household {
 	var house Household
 	house.id.AType = core.Household
 	house.id.Id = id
-
-	house.employer = 0
+	house.employer = id
 
 	// TODO: you may want to change these later idk
 	house.mpcY = float64(rand.IntN(4)) / 10
@@ -44,7 +43,7 @@ func NewHousehold(id uint32) *Household {
 	return &house
 }
 
-// If 0, then there is no employer --> Thats the bank
+// If self.id = employer.id, then there is no employer
 func (h *Household) GetEmployer() uint32 {
 	return h.employer
 }
@@ -71,10 +70,14 @@ func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
 	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
 	totalC := float64(h.c0) + balanceConsumption
 	
-	if h.GetEmployer() != 0 { // 0 -> unemployed
+	if !h.IsEmployed() {
 		totalC += h.mpcY * core.Wage
 	}
 	return int64(totalC)
+}
+
+func (h *Household) IsEmployed() bool {
+	return h.GetId() == h.GetEmployer()
 }
 
 func (h *Household) Log() {
