@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/AtesIsf/monetary-simulator/internal/agents"
@@ -22,6 +23,7 @@ import (
 type Simulation struct {
 	ld core.Ledger
 	pol core.Policies
+	rec Recorder
 	agents []core.Agent
 	agentsMutex sync.RWMutex // used when modifying the list
 	bank agents.Bank
@@ -35,6 +37,9 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	sim.ld.Init()
 	sim.pol.Populate()
 	sim.agents = make([]core.Agent, 0, totalAgents)
+
+	// Records once every 5 ticks
+	sim.rec = InitRecorder(filepath.Join(".", "data", "sim.csv"), 5)
 
 	var idCounter uint32 = 0
 
@@ -72,6 +77,10 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 		amount := sim.ld.GetBalance(id)
 		sim.ld.AddToBalance(sim.bank.GetId(), amount)
 	}
+}
+
+func (sim *Simulation) Close() {
+	sim.rec.Close()
 }
 
 func (sim *Simulation) Run(ticks uint64) {
@@ -131,16 +140,19 @@ func (sim *Simulation) Run(ticks uint64) {
 				}
 
 				// For debug purposes
-				if sim.tick == ticks - 1 {
+				/*if sim.tick == ticks - 1 {
 					ag.Log()
-				}
+				}*/
 			})
 		}
 		wg.Wait()
 		sim.tick += 1
+		if sim.tick % sim.rec.GetFrequency() == 0 {
+			sim.rec.Write(sim.agents, sim.tick, &sim.ld)
+		}
 	}
 
-	sim.ld.PrintBalances()
+	// sim.ld.PrintBalances()
 }
 
 // TODO: You may want to parameterize number of workers to hire
