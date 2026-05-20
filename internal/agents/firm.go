@@ -59,7 +59,8 @@ func (f *Firm) GetId() uint32 {
 }
 
 // TODO: Finish this
-func (f *Firm) Update(pol *core.Policies, ld *core.Ledger, tick uint64) core.UpdateReturn {
+func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
+																					tick uint64) core.UpdateReturn {
 	var returnVal core.UpdateReturn = core.Nothing
 	if tick % core.TicksPerYear == 0 {
 		f.invCurr = 0 // reset tracked value since it is a new year

@@ -57,7 +57,8 @@ func (h *Household) GetId() uint32 {
 	return h.id.Id
 }
 
-func (h *Household) Update(pol *core.Policies, ld *core.Ledger, tick uint64) core.UpdateReturn {
+func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
+																							 tick uint64) core.UpdateReturn {
 	// For now, spend all in one random firm. Diversify consumption later
 	return core.Consume
 }
