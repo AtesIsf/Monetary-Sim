@@ -119,17 +119,21 @@ func (sim *Simulation) Run(ticks uint64) {
 				// Household
 				case core.Consume:
 					house, _ := ag.(*agents.Household)
-					amount := house.CalculateConsumption(&sim.ld)
+					maxAmount := house.CalculateConsumption(&sim.ld)
 					// Diversify consumption later
 					randFirm, err := sim.GetRandom(core.Firm)
 					if err == nil {
-						sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
 						selected, err := sim.AgentWhere(randFirm.Id)
+						firmAgent, _ := (*selected).(*agents.Firm)
+
+						price := firmAgent.GetPrice()
+						amount := maxAmount - maxAmount % int64(price)
+
+						sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
 						if err != nil {
 							fmt.Println("Fatal Error! No firms found.")
 							os.Exit(1)
 						}
-						firmAgent, _ := (*selected).(*agents.Firm)
 						firmAgent.PerformSale(amount)
 
 						// TODO: Now, if the balance is less than 0, request a loan
@@ -140,9 +144,9 @@ func (sim *Simulation) Run(ticks uint64) {
 				}
 
 				// For debug purposes
-				/*if sim.tick == ticks - 1 {
+				/* if ag.GetType() == core.Firm {
 					ag.Log()
-				}*/
+				} */
 			})
 		}
 		wg.Wait()

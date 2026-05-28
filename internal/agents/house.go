@@ -70,14 +70,14 @@ func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
 	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
 	totalC := float64(h.c0) + balanceConsumption
 	
-	if !h.IsEmployed() {
+	if h.IsEmployed() {
 		totalC += h.mpcY * core.Wage
 	}
 	return int64(totalC)
 }
 
 func (h *Household) IsEmployed() bool {
-	return h.GetId() == h.GetEmployer()
+	return h.GetId() != h.GetEmployer()
 }
 
 func (h *Household) Log() {

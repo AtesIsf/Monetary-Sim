@@ -16,6 +16,7 @@ import (
 const Wage = 20
 // the base price of a good or service
 const Price = 20
+const MinPrice = 1
 
 type Ledger struct {
 	mutex sync.RWMutex

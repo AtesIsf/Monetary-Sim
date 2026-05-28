@@ -73,6 +73,7 @@ func (f *Firm) adaptPrice(delta int64) {
 	} // else -> value holds its zero value
 
 	f.stockPrice += value
+	f.stockPrice = max(core.MinPrice, f.stockPrice)
 }
 
 // TODO: Finish this
@@ -104,12 +105,16 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	return returnVal
 }
 
+func (f *Firm) GetPrice() int {
+	return f.stockPrice
+}
+
 func (f *Firm) GetType() core.AgentType {
 	return core.Firm
 }
 
 func (f *Firm) Log() {
-	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d -- %d Employees\n", 
-							f.GetId(), f.invTarget, f.invCurr, len(f.employees))
+	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d -- Price: %d -- %d Employees\n", 
+							f.GetId(), f.invTarget, f.invCurr, f.stockPrice, len(f.employees))
 }
 
