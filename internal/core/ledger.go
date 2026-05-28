@@ -14,6 +14,8 @@ import (
 
 // the amount households are paid per turn by firms
 const Wage = 20
+// the base price of a good or service
+const Price = 20
 
 type Ledger struct {
 	mutex sync.RWMutex

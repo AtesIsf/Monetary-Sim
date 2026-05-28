@@ -19,6 +19,7 @@ type Firm struct {
 	invTarget uint32 // targeted inventory, measured in monetary units
 	invCurr uint32 // current sold inventory
 	employees []uint32 // ids of employees
+	stockPrice int
 }
 
 func NewFirm(id uint32) *Firm {
@@ -29,6 +30,8 @@ func NewFirm(id uint32) *Firm {
 	// TODO: You may want to change how the target is set in the future
 	f.invTarget = uint32(rand.IntN(100)) + 500 // 500 <= target <= 600
 	f.invCurr = 0
+
+	f.stockPrice = core.Price
 
 	return &f
 }
@@ -58,6 +61,20 @@ func (f *Firm) GetId() uint32 {
 	return f.id.Id
 }
 
+// delta -> target - curr -> helps us modify the price
+func (f *Firm) adaptPrice(delta int64) {
+	var value int
+
+	if delta > 0 { // below target -> decrease prices
+		value = -(rand.IntN(3) + 1)
+	} else if delta < 0 { // above target -> increase prices
+		value = rand.IntN(3) + 1
+
+	} // else -> value holds its zero value
+
+	f.stockPrice += value
+}
+
 // TODO: Finish this
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 																					tick uint64) core.UpdateReturn {
@@ -81,6 +98,8 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	if currBal < 0 { // take out a loan
 		returnVal = core.RequestLoan
 	}
+
+	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
 
 	return returnVal
 }
