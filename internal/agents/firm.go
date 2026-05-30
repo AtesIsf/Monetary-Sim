@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"slices"
+	"sync"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
 )
@@ -20,6 +21,11 @@ type Firm struct {
 	invCurr uint32 // current sold inventory
 	employees []uint32 // ids of employees
 	stockPrice int
+
+	// Stored here, not in the bank for convenience
+	bankBalance uint32
+	loans []*Loan
+	loanLock sync.RWMutex
 }
 
 func NewFirm(id uint32) *Firm {
@@ -34,6 +40,52 @@ func NewFirm(id uint32) *Firm {
 	f.stockPrice = core.Price
 
 	return &f
+}
+
+// I'm assuming that this both mutates the bank and this agent's loans
+func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
+	f.loanLock.Lock()
+	defer f.loanLock.Unlock()
+	var toBeDeleted []int
+
+	for index, loan := range f.loans {
+		if loan.remainingAmount == 0 {
+			toBeDeleted = append(toBeDeleted, index)	
+		}
+
+		toBePaid := loan.remainingAmount - 
+								loan.initialAmount / uint64(loan.installment)
+		// Pay with demand deposits
+		if toBePaid < uint64(f.bankBalance) {
+			f.bankBalance -= uint32(toBePaid)				
+			bank.DecreaseDemandDeposit(f.GetId(), int64(toBePaid))
+			loan.remainingAmount -= toBePaid
+
+		// Pay with available cash
+		} else if toBePaid < uint64(ld.GetBalance(f.GetId())) {
+			ld.AddToBalance(f.GetId(), -int64(toBePaid))
+			loan.remainingAmount -= toBePaid
+
+		// Combine both
+		} else if toBePaid < uint64(f.bankBalance) +
+												 uint64(ld.GetBalance(f.GetId())) {
+			difference := uint64(f.bankBalance) +
+										uint64(ld.GetBalance(f.GetId())) - toBePaid
+			bank.DecreaseDemandDeposit(f.GetId(), int64(f.bankBalance))
+			ld.AddToBalance(f.GetId(), -(int64(difference) - 
+																	 int64(f.bankBalance)))
+			loan.remainingAmount -= toBePaid
+
+		// Cannot pay debt -> default
+		} else {
+			// TODO: Maybe take out another loan?
+			loan.remainingAmount = 0
+		}
+	}
+
+	for index := range toBeDeleted {
+		f.loans = append(f.loans[:index], f.loans[index + 1:]...)
+	}
 }
 
 func (f *Firm) AddEmployee(id uint32) {
@@ -76,7 +128,6 @@ func (f *Firm) adaptPrice(delta int64) {
 	f.stockPrice = max(core.MinPrice, f.stockPrice)
 }
 
-// TODO: Finish this
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 																					tick uint64) core.UpdateReturn {
 	var returnVal core.UpdateReturn = core.Nothing
@@ -103,6 +154,15 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
 
 	return returnVal
+}
+
+func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
+	if ld.GetBalance(f.GetId()) <= core.MaxLiquidity {
+		return
+	}
+	difference := ld.GetBalance(f.GetId()) - core.MaxLiquidity
+	bank.AddDemandDeposit(f.GetId(), difference, ld)
+	f.bankBalance += uint32(difference)
 }
 
 func (f *Firm) GetPrice() int {

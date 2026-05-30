@@ -3,6 +3,7 @@ package agents
 import (
 	"fmt"
 	"math/rand/v2"
+	"sync"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
 )
@@ -21,6 +22,11 @@ type Household struct {
 	mpcB float64 // from balance -> low
 	c0 uint32 // autonomoues consumption
 	employer uint32 // id of employer
+
+	// Stored here, not in the bank for convenience
+	bankBalance uint32
+	loans []*Loan
+	loanLock sync.RWMutex
 }
 
 // Total consumption: mpcY * Y + mpcB * B + c0
@@ -40,52 +46,116 @@ func NewHousehold(id uint32) *Household {
 
 	house.c0 = uint32(rand.IntN(5)) + 1
 
+	house.bankBalance = 0
+
 	return &house
 }
 
 // If self.id = employer.id, then there is no employer
-func (h *Household) GetEmployer() uint32 {
-	return h.employer
+func (f *Household) GetEmployer() uint32 {
+	return f.employer
 }
 
-func (h *Household) SetEmployer(id uint32) {
-	h.employer = id
+func (f *Household) SetEmployer(id uint32) {
+	f.employer = id
 }
 
-func (h *Household) GetId() uint32 {
-	return h.id.Id
+func (f *Household) GetId() uint32 {
+	return f.id.Id
 }
 
-func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
+func (f *Household) Update(pol *core.Policies, ld *core.Ledger,
 																							 tick uint64) core.UpdateReturn {
-	consumption := h.CalculateConsumption(ld)
+	consumption := f.CalculateConsumption(ld)
 	exitStatus := core.Consume
-	if ld.GetBalance(h.GetId()) - consumption < 0 {
+	if ld.GetBalance(f.GetId()) - consumption < 0 {
 		exitStatus = core.RequestLoan
 	}
 	return exitStatus
 }
 
-func (h *Household) GetType() core.AgentType {
+func (f *Household) GetType() core.AgentType {
 	return core.Household
 }
 
-func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
-	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
-	totalC := float64(h.c0) + balanceConsumption
+func (f *Household) CalculateConsumption(ld *core.Ledger) int64 {
+	balanceConsumption := f.mpcB * max(float64(ld.GetBalance(f.GetId())), 0)
+	totalC := float64(f.c0) + balanceConsumption
 	
-	if h.IsEmployed() {
-		totalC += h.mpcY * core.Wage
+	if f.IsEmployed() {
+		totalC += f.mpcY * core.Wage
 	}
 	return int64(totalC)
 }
 
-func (h *Household) IsEmployed() bool {
-	return h.GetId() != h.GetEmployer()
+// I'm assuming that this both mutates the bank and this agent's loans
+func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
+	h.loanLock.Lock()
+	defer h.loanLock.Unlock()
+	var toBeDeleted []int
+
+	for index, loan := range h.loans {
+		if loan.remainingAmount == 0 {
+			toBeDeleted = append(toBeDeleted, index)	
+		}
+
+		toBePaid := loan.remainingAmount - 
+								loan.initialAmount / uint64(loan.installment)
+		// Pay with demand deposits
+		if toBePaid < uint64(h.bankBalance) {
+			h.bankBalance -= uint32(toBePaid)				
+			bank.DecreaseDemandDeposit(h.GetId(), int64(toBePaid))
+			loan.remainingAmount -= toBePaid
+
+		// Pay with available cash
+		} else if toBePaid < uint64(ld.GetBalance(h.GetId())) {
+			ld.AddToBalance(h.GetId(), -int64(toBePaid))
+			loan.remainingAmount -= toBePaid
+
+		// Combine both
+		} else if toBePaid < uint64(h.bankBalance) +
+												 uint64(ld.GetBalance(h.GetId())) {
+			difference := uint64(h.bankBalance) +
+										uint64(ld.GetBalance(h.GetId())) - toBePaid
+			bank.DecreaseDemandDeposit(h.GetId(), int64(h.bankBalance))
+			ld.AddToBalance(h.GetId(), -(int64(difference) - 
+																	 int64(h.bankBalance)))
+			loan.remainingAmount -= toBePaid
+
+		// Cannot pay debt -> default
+		} else {
+			// TODO: Maybe take out another loan?
+			loan.remainingAmount = 0
+		}
+	}
+
+	for index := range toBeDeleted {
+		h.loans = append(h.loans[:index], h.loans[index + 1:]...)
+	}
 }
 
-func (h *Household) Log() {
+func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
+	if ld.GetBalance(h.GetId()) <= core.MaxLiquidity {
+		return
+	}
+	difference := ld.GetBalance(h.GetId()) - core.MaxLiquidity
+	bank.AddDemandDeposit(h.GetId(), difference, ld)
+	h.bankBalance += uint32(difference)
+}
+
+func (f *Household) RecieveLoan(loan *Loan) {
+	f.loanLock.Lock()
+	defer f.loanLock.Unlock()
+
+	f.loans = append(f.loans, loan)
+}
+
+func (f *Household) IsEmployed() bool {
+	return f.GetId() != f.GetEmployer()
+}
+
+func (f *Household) Log() {
 	fmt.Printf("House <%d> -- Employer Id: %d\n",
-							h.GetId(), h.GetEmployer())
+							f.GetId(), f.GetEmployer())
 }
 
