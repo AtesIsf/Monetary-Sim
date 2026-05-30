@@ -42,38 +42,45 @@ func NewFirm(id uint32) *Firm {
 	return &f
 }
 
+func (f *Firm) ReceiveLoan(loan *Loan) {
+	f.loanLock.Lock()
+	defer f.loanLock.Unlock()
+
+	f.loans = append(f.loans, loan)
+}
+
 // I'm assuming that this both mutates the bank and this agent's loans
 func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
 	f.loanLock.Lock()
 	defer f.loanLock.Unlock()
-	var toBeDeleted []int
 
-	for index, loan := range f.loans {
+	for _, loan := range f.loans {
 		if loan.remainingAmount == 0 {
-			toBeDeleted = append(toBeDeleted, index)	
+			continue
 		}
 
-		toBePaid := loan.remainingAmount - 
-								loan.initialAmount / uint64(loan.installment)
+		installment := loan.initialAmount / uint64(loan.installment)
+		toBePaid := installment
+		toBePaid = min(toBePaid, loan.remainingAmount)
+
 		// Pay with demand deposits
-		if toBePaid < uint64(f.bankBalance) {
-			f.bankBalance -= uint32(toBePaid)				
+		if toBePaid <= uint64(f.bankBalance) {
+			f.bankBalance -= uint32(toBePaid)
 			bank.DecreaseDemandDeposit(f.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
 		// Pay with available cash
-		} else if toBePaid < uint64(ld.GetBalance(f.GetId())) {
-			ld.AddToBalance(f.GetId(), -int64(toBePaid))
+		} else if toBePaid <= uint64(max(0, ld.GetBalance(f.GetId()))) {
+			ld.Transfer(f.GetId(), bank.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
 		// Combine both
-		} else if toBePaid < uint64(f.bankBalance) +
-												 uint64(ld.GetBalance(f.GetId())) {
-			difference := uint64(f.bankBalance) +
-										uint64(ld.GetBalance(f.GetId())) - toBePaid
+		} else if toBePaid <= uint64(f.bankBalance) + 
+													uint64(max(0, ld.GetBalance(f.GetId()))) {
+			cashNeeded := toBePaid - uint64(f.bankBalance)
 			bank.DecreaseDemandDeposit(f.GetId(), int64(f.bankBalance))
-			ld.AddToBalance(f.GetId(), -(int64(difference) - 
-																	 int64(f.bankBalance)))
+			f.bankBalance = 0
+			ld.Transfer(f.GetId(), bank.GetId(), int64(cashNeeded))
 			loan.remainingAmount -= toBePaid
 
 		// Cannot pay debt -> default
@@ -83,9 +90,14 @@ func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
 		}
 	}
 
-	for index := range toBeDeleted {
-		f.loans = append(f.loans[:index], f.loans[index + 1:]...)
+	// Filter out finished loans
+	newLoans := make([]*Loan, 0, len(f.loans))
+	for _, loan := range f.loans {
+		if loan.remainingAmount > 0 {
+			newLoans = append(newLoans, loan)
+		}
 	}
+	f.loans = newLoans
 }
 
 func (f *Firm) AddEmployee(id uint32) {
@@ -154,6 +166,10 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
 
 	return returnVal
+}
+
+func (f *Firm) AddLoan(loan *Loan) {
+	f.loans = append(f.loans, loan)
 }
 
 func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {

@@ -122,7 +122,15 @@ func (sim *Simulation) Run(ticks uint64) {
 						AType: ag.GetType(),
 					}
 					// TODO: Change these placeholder values later
-					sim.bank.IssueLoan(&sim.ld, agentId, 200, 5)
+					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, 5)
+					if ag.GetType() == core.Firm {
+						f, _ := ag.(*agents.Firm)
+						f.AddLoan(loan)
+
+					} else if ag.GetType() == core.Household {
+						h, _ := ag.(*agents.Household)
+						h.AddLoan(loan)
+					}
 
 				// Household
 				case core.Consume:

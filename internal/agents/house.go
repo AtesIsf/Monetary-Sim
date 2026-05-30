@@ -51,6 +51,10 @@ func NewHousehold(id uint32) *Household {
 	return &house
 }
 
+func (h *Household) AddLoan(loan *Loan) {
+	h.loans = append(h.loans, loan)
+}
+
 // If self.id = employer.id, then there is no employer
 func (f *Household) GetEmployer() uint32 {
 	return f.employer
@@ -92,34 +96,34 @@ func (f *Household) CalculateConsumption(ld *core.Ledger) int64 {
 func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
 	h.loanLock.Lock()
 	defer h.loanLock.Unlock()
-	var toBeDeleted []int
 
-	for index, loan := range h.loans {
+	for _, loan := range h.loans {
 		if loan.remainingAmount == 0 {
-			toBeDeleted = append(toBeDeleted, index)	
+			continue
 		}
 
-		toBePaid := loan.remainingAmount - 
-								loan.initialAmount / uint64(loan.installment)
+		installment := loan.initialAmount / uint64(loan.installment)
+		toBePaid := installment
+		toBePaid = min(toBePaid, loan.remainingAmount)
+
 		// Pay with demand deposits
-		if toBePaid < uint64(h.bankBalance) {
-			h.bankBalance -= uint32(toBePaid)				
+		if toBePaid <= uint64(h.bankBalance) {
+			h.bankBalance -= uint32(toBePaid)
 			bank.DecreaseDemandDeposit(h.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
 		// Pay with available cash
-		} else if toBePaid < uint64(ld.GetBalance(h.GetId())) {
-			ld.AddToBalance(h.GetId(), -int64(toBePaid))
+		} else if toBePaid <= uint64(max(0, ld.GetBalance(h.GetId()))) {
+			ld.Transfer(h.GetId(), bank.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
 		// Combine both
-		} else if toBePaid < uint64(h.bankBalance) +
-												 uint64(ld.GetBalance(h.GetId())) {
-			difference := uint64(h.bankBalance) +
-										uint64(ld.GetBalance(h.GetId())) - toBePaid
+		} else if toBePaid <= uint64(h.bankBalance) +
+													uint64(max(0, ld.GetBalance(h.GetId()))) {
+			cashNeeded := toBePaid - uint64(h.bankBalance)
 			bank.DecreaseDemandDeposit(h.GetId(), int64(h.bankBalance))
-			ld.AddToBalance(h.GetId(), -(int64(difference) - 
-																	 int64(h.bankBalance)))
+			h.bankBalance = 0
+			ld.Transfer(h.GetId(), bank.GetId(), int64(cashNeeded))
 			loan.remainingAmount -= toBePaid
 
 		// Cannot pay debt -> default
@@ -129,9 +133,14 @@ func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
 		}
 	}
 
-	for index := range toBeDeleted {
-		h.loans = append(h.loans[:index], h.loans[index + 1:]...)
+	// Filter out finished loans
+	newLoans := make([]*Loan, 0, len(h.loans))
+	for _, loan := range h.loans {
+		if loan.remainingAmount > 0 {
+			newLoans = append(newLoans, loan)
+		}
 	}
+	h.loans = newLoans
 }
 
 func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
@@ -143,7 +152,7 @@ func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
 	h.bankBalance += uint32(difference)
 }
 
-func (f *Household) RecieveLoan(loan *Loan) {
+func (f *Household) ReceiveLoan(loan *Loan) {
 	f.loanLock.Lock()
 	defer f.loanLock.Unlock()
 
