@@ -33,4 +33,5 @@ go.work.sum
 
 # Project specific
 /simulation
-/data/
+/data/*.csv
+/data/*.png
