@@ -44,7 +44,8 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	var idCounter uint32 = 0
 
 	sim.bank = *agents.NewBank(idCounter)
-	sim.ld.AddToBalance(sim.bank.GetId(), 0)
+	// Giving the bank a balance for now
+	sim.ld.AddToBalance(sim.bank.GetId(), 1000)
 	sim.agents = append(sim.agents, &sim.bank)
 
 	idCounter += 1
@@ -69,14 +70,14 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	}
 
 	// Add all agents' balances as loanable funds
-	for i := range len(sim.agents) {
+	/* for i := range len(sim.agents) {
 		if i == 0 {
 			continue
 		}
 		id := sim.agents[i].GetId()
 		amount := sim.ld.GetBalance(id)
 		sim.ld.AddToBalance(sim.bank.GetId(), amount)
-	}
+	} */
 }
 
 func (sim *Simulation) Close() {
@@ -114,7 +115,14 @@ func (sim *Simulation) Run(ticks uint64) {
 					}
 					sim.agentsMutex.Unlock()
 
+				// TODO: Make this logic more complex
 				case core.RequestLoan:
+					agentId := core.AgentId {
+						Id: ag.GetId(),
+						AType: ag.GetType(),
+					}
+					// TODO: Change these placeholder values later
+					sim.bank.IssueLoan(&sim.ld, agentId, 200, 5)
 
 				// Household
 				case core.Consume:
@@ -238,4 +246,3 @@ func (sim *Simulation) AgentWhere(id uint32) (*core.Agent, error) {
 	}
 	return nil, errors.New("No matching agent found.")
 }
-

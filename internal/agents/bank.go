@@ -2,6 +2,7 @@ package agents
 
 import (
 	"fmt"
+	"sync"
 
 	"github.com/AtesIsf/monetary-simulator/internal/core"
 )
@@ -17,12 +18,13 @@ type Bank struct {
 	debt uint32 // for simplicity, banks can only borrow from the central bank
 	loans []Loan
 	liabilities uint32
+	loanLock sync.RWMutex
 }
 
 type Loan struct {
 	from core.AgentId
 	to core.AgentId
-	initialAmount uint32
+	initialAmount uint64
 	installment uint32
 	interest uint32
 }
@@ -33,6 +35,29 @@ func NewBank(id uint32) *Bank {
 	b.id.Id = id
 	b.debt = 0
 	return &b
+}
+
+// Issues a loan and transfers funds from the bank to the target
+func (b *Bank) IssueLoan(ld *core.Ledger, target core.AgentId, 
+												 amount int64, interest uint32) {
+
+	b.loanLock.Lock()
+	defer b.loanLock.Unlock()
+
+	if ld.GetBalance(b.GetId()) - amount < 0 {
+		return // TODO: you may want to return an error in the future
+	}
+
+	loan := Loan {
+		from: core.AgentId{ AType: core.Bank, Id: b.GetId()},
+		to: target,
+		initialAmount: uint64(amount),
+		installment: 10,
+		interest: interest,
+	}
+
+	b.loans = append(b.loans, loan)
+	ld.Transfer(b.GetId(), target.Id, amount)
 }
 
 func (b *Bank) GetId() uint32 {
@@ -51,4 +76,3 @@ func (b *Bank) GetType() core.AgentType {
 func (b *Bank) Log() {
 	fmt.Printf("Bank\n")
 }
-

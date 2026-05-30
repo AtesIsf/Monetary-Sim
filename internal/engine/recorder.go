@@ -64,10 +64,10 @@ func (r *Recorder) Write(arr []core.Agent, tick uint64, ld *core.Ledger) {
 			bank, _ := ag.(*agents.Bank)
 			line[2] = "Bank"
 			line[4] = fmt.Sprintf("%d", bank.GetId())
-
 		}
 
 		r.writer.Write(line)
 	}
+	r.writer.Flush()
 }
 
