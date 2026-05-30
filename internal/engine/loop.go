@@ -109,7 +109,7 @@ func (sim *Simulation) Run(ticks uint64) {
 					for _, a := range sim.agents {
 						if a.GetType() == core.Household && a.GetId() == id {
 							house, _ := a.(*agents.Household)
-							house.SetEmployer(0) // 0 is the bank, so no employer
+							house.SetEmployer(house.GetId()) // Set employer to self to indicate unemployment
 							break
 						}
 					}
