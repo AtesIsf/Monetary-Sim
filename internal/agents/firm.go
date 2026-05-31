@@ -55,7 +55,7 @@ func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
 	defer f.loanLock.Unlock()
 
 	for _, loan := range f.loans {
-		if loan.remainingAmount == 0 {
+		if loan == nil || loan.remainingAmount == 0 {
 			continue
 		}
 
@@ -169,6 +169,9 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 }
 
 func (f *Firm) AddLoan(loan *Loan) {
+	if loan == nil {
+		return
+	}
 	f.loans = append(f.loans, loan)
 }
 

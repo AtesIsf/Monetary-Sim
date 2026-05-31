@@ -52,6 +52,9 @@ func NewHousehold(id uint32) *Household {
 }
 
 func (h *Household) AddLoan(loan *Loan) {
+	if loan == nil {
+		return
+	}
 	h.loans = append(h.loans, loan)
 }
 
@@ -98,7 +101,7 @@ func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
 	defer h.loanLock.Unlock()
 
 	for _, loan := range h.loans {
-		if loan.remainingAmount == 0 {
+		if loan == nil || loan.remainingAmount == 0 {
 			continue
 		}
 

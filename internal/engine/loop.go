@@ -123,13 +123,15 @@ func (sim *Simulation) Run(ticks uint64) {
 					}
 					// TODO: Change these placeholder values later
 					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, 5)
-					if ag.GetType() == core.Firm {
-						f, _ := ag.(*agents.Firm)
-						f.AddLoan(loan)
+					if loan != nil {
+						if ag.GetType() == core.Firm {
+							f, _ := ag.(*agents.Firm)
+							f.AddLoan(loan)
 
-					} else if ag.GetType() == core.Household {
-						h, _ := ag.(*agents.Household)
-						h.AddLoan(loan)
+						} else if ag.GetType() == core.Household {
+							h, _ := ag.(*agents.Household)
+							h.AddLoan(loan)
+						}
 					}
 
 				// Household
