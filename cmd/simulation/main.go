@@ -8,7 +8,7 @@ func main() {
 	In the US, there are approximately 33.2M businesses and 350M people.
 	So, approximately using the ratio 1/10 firms to households should be ok
 	*/
-	sim.Populate(1000, 120)
+	sim.Populate(10000, 1000)
 	defer sim.Close()
 
 	sim.Run(1200)
