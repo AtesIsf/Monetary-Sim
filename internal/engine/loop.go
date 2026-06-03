@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"os"
 	"path/filepath"
 	"sync"
 
@@ -28,6 +27,7 @@ type Simulation struct {
 	agentsMutex sync.RWMutex // used when modifying the list
 	bank agents.Bank
 	tick uint64
+	matcher *Matcher
 }
 
 func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
@@ -40,6 +40,7 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 
 	// Records once every 5 ticks
 	sim.rec = InitRecorder(filepath.Join(".", "data", "sim.csv"), 5)
+	sim.matcher = NewMatcher(sim)
 
 	var idCounter uint32 = 0
 
@@ -99,7 +100,7 @@ func (sim *Simulation) Run(ticks uint64) {
 				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
-						sim.HireWorker(firm)
+						sim.matcher.HireWorker(firm)
 						firm.PayWages(&sim.ld)
 					}
 
@@ -140,26 +141,7 @@ func (sim *Simulation) Run(ticks uint64) {
 				// Household
 				case core.Consume:
 					house, _ := ag.(*agents.Household)
-					maxAmount := house.CalculateConsumption(&sim.ld)
-					// Diversify consumption later
-					randFirm, err := sim.GetRandom(core.Firm)
-					if err == nil {
-						selected, err := sim.AgentWhere(randFirm.Id)
-						firmAgent, _ := (*selected).(*agents.Firm)
-
-						price := firmAgent.GetPrice()
-						amount := maxAmount - maxAmount % int64(price)
-
-						sim.ld.Transfer(house.GetId(), randFirm.Id, amount)
-						if err != nil {
-							fmt.Println("Fatal Error! No firms found.")
-							os.Exit(1)
-						}
-						firmAgent.PerformSale(amount)
-
-						// TODO: Now, if the balance is less than 0, request a loan
-
-					} // else, no firm was valid so no consumption took place
+					sim.matcher.BuyGoods(house, &sim.ld)
 
 				// TODO: this pushes back meaningful activity by a tick!
 				// May want to recurse in the future
@@ -230,24 +212,6 @@ func (sim *Simulation) Run(ticks uint64) {
 	// sim.ld.PrintBalances()
 }
 
-// TODO: You may want to parameterize number of workers to hire
-func (sim *Simulation) HireWorker(f *agents.Firm) {
-	sim.agentsMutex.Lock()
-	defer sim.agentsMutex.Unlock()
-
-	for _, ag := range sim.agents {
-		if ag.GetType() != core.Household {
-			continue
-		}
-
-		house, _ := ag.(*agents.Household)
-		if !house.IsEmployed() {
-			house.SetEmployer(f.GetId())
-			f.AddEmployee(ag.GetId())
-			break
-		}
-	}
-}
 
 // This function is to be used in phase 1, where exchanges are random
 // It fails if there is no agents of the specified type
