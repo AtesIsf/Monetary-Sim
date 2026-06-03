@@ -105,7 +105,15 @@ func (b *Bank) GetId() uint32 {
 }
 
 func (b *Bank) Update(pol *core.Policies, ld *core.Ledger,
-																					ticks uint64) core.UpdateReturn {
+ticks uint64) core.UpdateReturn {
+	b.ddLock.Lock()
+	defer b.ddLock.Unlock()
+
+	rate := pol.GetInterestRate() - 2
+	for id, amount := range b.demandDeposits {
+		b.demandDeposits[id] += amount * int64(rate)
+	}
+
 	return core.Nothing
 }
 
