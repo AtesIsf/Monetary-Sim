@@ -72,13 +72,19 @@ func (f *Household) GetId() uint32 {
 }
 
 func (f *Household) Update(pol *core.Policies, ld *core.Ledger,
-																							 tick uint64) core.UpdateReturn {
+													 tick uint64) core.UpdateReturn {
 	consumption := f.CalculateConsumption(ld)
-	exitStatus := core.Consume
-	if ld.GetBalance(f.GetId()) - consumption < 0 {
-		exitStatus = core.RequestLoan
+	balance := ld.GetBalance(f.GetId())
+
+	if balance >= consumption {
+		return core.Consume
 	}
-	return exitStatus
+
+	if balance + int64(f.bankBalance) >= consumption {
+		return core.DrawSavings
+	}
+	// the case where balance + savings don't add up to the consumption
+	return core.RequestLoan
 }
 
 func (f *Household) GetType() core.AgentType {

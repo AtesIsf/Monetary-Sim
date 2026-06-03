@@ -141,7 +141,7 @@ func (f *Firm) adaptPrice(delta int64) {
 }
 
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
-																					tick uint64) core.UpdateReturn {
+																				  tick uint64) core.UpdateReturn {
 	var returnVal core.UpdateReturn = core.Nothing
 	if tick % core.TicksPerYear == 0 {
 		f.invCurr = 0 // reset tracked value since it is a new year
@@ -153,17 +153,21 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 		returnVal = core.FireWorkers
 	}
 
-	selfId := f.GetId()
-	for _, id := range f.employees {
-		ld.Transfer(selfId, uint32(id), core.Wage)
+	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
+
+	// TODO: adaptive wages later
+	totalSpending := len(f.employees) * core.Wage
+
+	if totalSpending >= 0 {
+		return returnVal
 	}
 
-	currBal := ld.GetBalance(f.GetId())
-	if currBal < 0 { // take out a loan
+	// savings are enough to cover the deficit
+	if totalSpending + int(f.bankBalance) >= 0 {
+		returnVal = core.DrawSavings
+	} else { // take out a loan
 		returnVal = core.RequestLoan
 	}
-
-	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
 
 	return returnVal
 }

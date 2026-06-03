@@ -23,6 +23,7 @@ const (
 	HireWorkers
 	FireWorkers
 	RequestLoan
+	DrawSavings
 	// Bank Update() Returns
 )
 
