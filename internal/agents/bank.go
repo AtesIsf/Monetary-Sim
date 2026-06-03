@@ -52,18 +52,19 @@ func (b *Bank) IssueLoan(ld *core.Ledger, target core.AgentId,
 		return nil // TODO: you may want to return an error in the future
 	}
 
-	loan := new(Loan {
+	loan := Loan {
 		from: core.AgentId{ AType: core.Bank, Id: b.GetId() },
 		to: target,
 		initialAmount: uint64(amount),
 		remainingAmount: uint64(amount),
 		installment: 10,
 		interest: interest,
-	})
+	}
+	loanPtr := new(loan)
 
-	b.loans = append(b.loans, loan)
+	b.loans = append(b.loans, loanPtr)
 	ld.Transfer(b.GetId(), target.Id, amount)
-	return loan
+	return loanPtr
 }
 
 // To be used when repaying debt with demand deposits
@@ -81,6 +82,15 @@ func (b *Bank) AddDemandDeposit(id uint32, amount int64, ld *core.Ledger)  {
 	defer b.ddLock.Unlock()
 
 	b.demandDeposits[id] += amount
+}
+
+func (b *Bank) WithdrawAll(id uint32, ld *core.Ledger) {
+	b.ddLock.Lock()
+	defer b.ddLock.Unlock()
+
+	deposits := b.demandDeposits[id]
+	ld.Transfer(b.GetId(), id, deposits)
+	b.demandDeposits[id] -= deposits
 }
 
 func (b *Bank) GetId() uint32 {

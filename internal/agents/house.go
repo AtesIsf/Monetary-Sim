@@ -59,44 +59,44 @@ func (h *Household) AddLoan(loan *Loan) {
 }
 
 // If self.id = employer.id, then there is no employer
-func (f *Household) GetEmployer() uint32 {
-	return f.employer
+func (h *Household) GetEmployer() uint32 {
+	return h.employer
 }
 
-func (f *Household) SetEmployer(id uint32) {
-	f.employer = id
+func (h *Household) SetEmployer(id uint32) {
+	h.employer = id
 }
 
-func (f *Household) GetId() uint32 {
-	return f.id.Id
+func (h *Household) GetId() uint32 {
+	return h.id.Id
 }
 
-func (f *Household) Update(pol *core.Policies, ld *core.Ledger,
+func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
 													 tick uint64) core.UpdateReturn {
-	consumption := f.CalculateConsumption(ld)
-	balance := ld.GetBalance(f.GetId())
+	consumption := h.CalculateConsumption(ld)
+	balance := ld.GetBalance(h.GetId())
 
 	if balance >= consumption {
 		return core.Consume
 	}
 
-	if balance + int64(f.bankBalance) >= consumption {
+	if balance + int64(h.bankBalance) >= consumption {
 		return core.DrawSavings
 	}
 	// the case where balance + savings don't add up to the consumption
 	return core.RequestLoan
 }
 
-func (f *Household) GetType() core.AgentType {
+func (h *Household) GetType() core.AgentType {
 	return core.Household
 }
 
-func (f *Household) CalculateConsumption(ld *core.Ledger) int64 {
-	balanceConsumption := f.mpcB * max(float64(ld.GetBalance(f.GetId())), 0)
-	totalC := float64(f.c0) + balanceConsumption
+func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
+	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
+	totalC := float64(h.c0) + balanceConsumption
 	
-	if f.IsEmployed() {
-		totalC += f.mpcY * core.Wage
+	if h.IsEmployed() {
+		totalC += h.mpcY * core.Wage
 	}
 	return int64(totalC)
 }
@@ -161,19 +161,23 @@ func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
 	h.bankBalance += uint32(difference)
 }
 
-func (f *Household) ReceiveLoan(loan *Loan) {
-	f.loanLock.Lock()
-	defer f.loanLock.Unlock()
-
-	f.loans = append(f.loans, loan)
+func (h *Household) ClearSavings() {
+	h.bankBalance = 0
 }
 
-func (f *Household) IsEmployed() bool {
-	return f.GetId() != f.GetEmployer()
+func (h *Household) ReceiveLoan(loan *Loan) {
+	h.loanLock.Lock()
+	defer h.loanLock.Unlock()
+
+	h.loans = append(h.loans, loan)
 }
 
-func (f *Household) Log() {
+func (h *Household) IsEmployed() bool {
+	return h.GetId() != h.GetEmployer()
+}
+
+func (h *Household) Log() {
 	fmt.Printf("House <%d> -- Employer Id: %d\n",
-							f.GetId(), f.GetEmployer())
+							h.GetId(), h.GetEmployer())
 }
 

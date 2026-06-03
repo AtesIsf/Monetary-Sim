@@ -158,6 +158,20 @@ func (sim *Simulation) Run(ticks uint64) {
 
 					} // else, no firm was valid so no consumption took place
 
+				// TODO: this pushes back meaningful activity by a tick!
+				// May want to recurse in the future
+				case core.DrawSavings:
+					if ag.GetType() == core.Household {
+						h, _ := ag.(*agents.Household)
+						sim.bank.WithdrawAll(h.GetId(), &sim.ld)
+						h.ClearSavings()
+					} else if ag.GetType() == core.Firm {
+						f, _ := ag.(*agents.Firm)
+						sim.bank.WithdrawAll(f.GetId(), &sim.ld)
+						f.ClearSavings()
+					}
+
+
 				default: // result == core.Nothing, so do nothing
 				}
 

@@ -188,6 +188,10 @@ func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
 	f.bankBalance += uint32(difference)
 }
 
+func (f *Firm) ClearSavings() {
+	f.bankBalance = 0
+}
+
 func (f *Firm) GetPrice() int {
 	return f.stockPrice
 }
