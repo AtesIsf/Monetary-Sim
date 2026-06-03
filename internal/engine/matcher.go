@@ -1,7 +1,7 @@
 package engine
 
 import (
-	"math/rand/v2"
+	"math"
 
 	"github.com/AtesIsf/monetary-simulator/internal/agents"
 	"github.com/AtesIsf/monetary-simulator/internal/core"
@@ -56,33 +56,35 @@ func (m *Matcher) BuyGoods(buyer *agents.Household, ld *core.Ledger) {
 
 func (m *Matcher) HireWorker(firm *agents.Firm) {
 	m.sim.agentsMutex.RLock()
-	var unemployed []*agents.Household
+	var cheapest *agents.Household
+	var lowestWage int64 = math.MaxInt64
 
 	for _, ag := range m.sim.agents {
-		if ag.GetType() == core.Household {
-			house, ok := ag.(*agents.Household)
-			if ok && !house.IsEmployed() {
-				unemployed = append(unemployed, house)
+		if ag.GetType() != core.Household {
+			continue
+		}
+		house, ok := ag.(*agents.Household)
+		if ok && !house.IsEmployed() {
+			wage := m.sim.ld.GetWageExpectation(house.GetId())
+			if wage < lowestWage {
+				lowestWage = wage
+				cheapest = house
 			}
 		}
 	}
 	m.sim.agentsMutex.RUnlock()
 
-	if len(unemployed) == 0 {
+	if cheapest == nil {
 		return
 	}
-
-	// Pick a random unemployed household
-	randomIndex := rand.IntN(len(unemployed))
-	candidate := unemployed[randomIndex]
 
 	// Safely apply changes under write lock
 	m.sim.agentsMutex.Lock()
 	defer m.sim.agentsMutex.Unlock()
 
-	// Double-check employment status under write lock to prevent double-hiring
-	if !candidate.IsEmployed() {
-		candidate.SetEmployer(firm.GetId())
-		firm.AddEmployee(candidate.GetId())
+	// Double-check employment status under write lock to prevent race double-hiring
+	if !cheapest.IsEmployed() {
+		cheapest.SetEmployer(firm.GetId())
+		firm.AddEmployee(cheapest.GetId())
 	}
 }
