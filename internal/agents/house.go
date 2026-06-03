@@ -27,6 +27,7 @@ type Household struct {
 	bankBalance int64
 	loans []*Loan
 	loanLock sync.RWMutex
+	wageExpectation int64
 }
 
 // Total consumption: mpcY * Y + mpcB * B + c0
@@ -47,6 +48,7 @@ func NewHousehold(id uint32) *Household {
 	house.c0 = uint32(rand.IntN(5)) + 1
 
 	house.bankBalance = 0
+	house.wageExpectation = int64(core.StandardWage)
 
 	return &house
 }
@@ -72,7 +74,25 @@ func (h *Household) GetId() uint32 {
 }
 
 func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
-													 tick uint64) core.UpdateReturn {
+								macro core.MacroTracker, tick uint64) core.UpdateReturn {
+
+	// 1. Unemployment-driven adjustment (every tick)
+	if h.IsEmployed()  && macro.GetUnemploymentRate() < 0.05 {
+			h.wageExpectation++
+	} else if !h.IsEmployed() {
+		h.wageExpectation = max(core.MinWage, h.wageExpectation - 1)
+	}
+
+	// 2. Price-driven adjustment (every 12 ticks)
+	if tick % 12 == 0 && tick > 0 {
+		rate := macro.GetInflationRate()
+		scaled := float64(h.wageExpectation) * rate
+		h.wageExpectation = max(core.MinWage, int64(scaled))
+	}
+
+	// 3. Register expectation on the ledger
+	ld.SetWageExpectation(h.GetId(), h.wageExpectation)
+
 	consumption := h.CalculateConsumption(ld)
 	balance := ld.GetBalance(h.GetId())
 
@@ -96,7 +116,7 @@ func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
 	totalC := float64(h.c0) + balanceConsumption
 	
 	if h.IsEmployed() {
-		totalC += h.mpcY * core.Wage
+		totalC += h.mpcY * float64(core.StandardWage)
 	}
 	return int64(totalC)
 }

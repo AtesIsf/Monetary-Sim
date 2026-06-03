@@ -28,6 +28,7 @@ type Simulation struct {
 	bank agents.Bank
 	tick uint64
 	matcher *Matcher
+	priceHistory []float64
 }
 
 func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
@@ -37,6 +38,7 @@ func (sim *Simulation) Populate(nHouses uint32, nFirms uint32) {
 	sim.ld.Init()
 	sim.pol.Populate()
 	sim.agents = make([]core.Agent, 0, totalAgents)
+	sim.priceHistory = make([]float64, 0, 1200)
 
 	// Records once every 5 ticks
 	sim.rec = InitRecorder(filepath.Join(".", "data", "sim.csv"), 5)
@@ -91,7 +93,7 @@ func (sim *Simulation) Run(ticks uint64) {
 
 		for _, ag := range sim.agents {
 			wg.Go(func() {
-				result := ag.Update(&sim.pol, &sim.ld, sim.tick)
+				result := ag.Update(&sim.pol, &sim.ld, sim, sim.tick)
 
 				// Handling update return here
 
@@ -111,7 +113,8 @@ func (sim *Simulation) Run(ticks uint64) {
 					for _, a := range sim.agents {
 						if a.GetType() == core.Household && a.GetId() == id {
 							house, _ := a.(*agents.Household)
-							house.SetEmployer(house.GetId()) // Set employer to self to indicate unemployment
+							// Set employer to self to indicate unemployment
+							house.SetEmployer(house.GetId())
 							break
 						}
 					}
@@ -203,6 +206,23 @@ func (sim *Simulation) Run(ticks uint64) {
 		} 
 		wg.Wait()
 
+		// Pricelevel tracking
+		var totalPrice int = 0
+		var firmCount int = 0
+		for _, ag := range sim.agents {
+			if ag.GetType() != core.Firm {
+				continue
+			}
+			f, _ := ag.(*agents.Firm)
+			totalPrice += f.GetPrice()
+			firmCount++
+		}
+		avgPrice := 1.0
+		if firmCount > 0 {
+			avgPrice = float64(totalPrice) / float64(firmCount)
+		}
+		sim.priceHistory = append(sim.priceHistory, avgPrice)
+
 		sim.tick += 1
 		if sim.tick % sim.rec.GetFrequency() == 0 {
 			sim.rec.Write(sim.agents, sim.tick, &sim.ld)
@@ -273,3 +293,38 @@ func (sim *Simulation) AgentWhere(id uint32) (*core.Agent, error) {
 	}
 	return nil, errors.New("No matching agent found.")
 }
+
+func (sim *Simulation) GetUnemploymentRate() float64 {
+	sim.agentsMutex.RLock()
+	defer sim.agentsMutex.RUnlock()
+
+	var totalHouses, unemployed float64
+	for _, ag := range sim.agents {
+		if ag.GetType() != core.Household {
+			continue
+		}
+		totalHouses++
+		house, _ := ag.(*agents.Household)
+		if !house.IsEmployed() {
+			unemployed++
+		}
+	}
+	if totalHouses == 0 {
+		return 0
+	}
+	return unemployed / totalHouses
+}
+
+func (sim *Simulation) GetInflationRate() float64 {
+	length := len(sim.priceHistory)
+	if length < 12 {
+		return 1.0
+	}
+	currentPrice := sim.priceHistory[length - 1]
+	prevPrice := sim.priceHistory[length - 12]
+	if prevPrice == 0 {
+		return 1.0
+	}
+	return currentPrice / prevPrice
+}
+

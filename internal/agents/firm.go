@@ -141,7 +141,7 @@ func (f *Firm) adaptPrice(delta int64) {
 }
 
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
-																				  tick uint64) core.UpdateReturn {
+										_ core.MacroTracker, tick uint64) core.UpdateReturn {
 	var returnVal core.UpdateReturn = core.Nothing
 	if tick % core.TicksPerYear == 0 {
 		f.invCurr = 0 // reset tracked value since it is a new year
@@ -155,16 +155,23 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 
 	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
 
-	// TODO: adaptive wages later
-	totalSpending := len(f.employees) * core.Wage
+	// Sum actual employee wage expectations
+	var totalSpending int64 = 0
+	for _, empId := range f.employees {
+		wage := ld.GetWageExpectation(empId)
+		if wage <= 0 {
+			wage = core.MinWage
+		}
+		totalSpending += wage
+	}
 
 	// Balance is enough to pay
-	if int64(totalSpending) < ld.GetBalance(f.GetId()) {
+	if totalSpending < ld.GetBalance(f.GetId()) {
 		return returnVal
 	}
 
 	// savings are enough to cover the deficit
-	if totalSpending + int(f.bankBalance) >= 0 {
+	if totalSpending + f.bankBalance >= 0 {
 		returnVal = core.DrawSavings
 	} else { // take out a loan
 		returnVal = core.RequestLoan
@@ -190,9 +197,12 @@ func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
 }
 
 func (f *Firm) PayWages(ld *core.Ledger) {
-	for _, employeeID := range f.employees {
-		// TODO: adaptive wages later
-		ld.Transfer(f.GetId(), employeeID, core.Wage)
+	for _, id := range f.employees {
+		wage := ld.GetWageExpectation(id)
+		if wage <= 0 {
+			wage = core.MinWage
+		}
+		ld.Transfer(f.GetId(), id, wage)
 	}
 }
 

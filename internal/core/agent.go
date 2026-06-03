@@ -7,9 +7,14 @@ package core
  * All more specialized agents implement this Agent interface.
  */
 
+type MacroTracker interface {
+	GetUnemploymentRate() float64
+	GetInflationRate() float64
+}
+
 type Agent interface {
 	GetId() uint32
-	Update(pol *Policies, ld *Ledger, tick uint64) UpdateReturn
+	Update(pol *Policies, ld *Ledger, macro MacroTracker, tick uint64) UpdateReturn
 	GetType() AgentType
 	Log()
 }
