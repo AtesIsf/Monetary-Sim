@@ -84,6 +84,13 @@ func (b *Bank) AddDemandDeposit(id uint32, amount int64, ld *core.Ledger)  {
 	b.demandDeposits[id] += amount
 }
 
+func (b *Bank) QueryDeposits(id uint32) int64 {
+	b.ddLock.RLock()
+	defer b.ddLock.RUnlock()
+
+	return b.demandDeposits[id]
+}
+
 func (b *Bank) WithdrawAll(id uint32, ld *core.Ledger) {
 	b.ddLock.Lock()
 	defer b.ddLock.Unlock()

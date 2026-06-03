@@ -23,7 +23,7 @@ type Firm struct {
 	stockPrice int
 
 	// Stored here, not in the bank for convenience
-	bankBalance uint32
+	bankBalance int64
 	loans []*Loan
 	loanLock sync.RWMutex
 }
@@ -65,7 +65,7 @@ func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
 
 		// Pay with demand deposits
 		if toBePaid <= uint64(f.bankBalance) {
-			f.bankBalance -= uint32(toBePaid)
+			f.bankBalance -= int64(toBePaid)
 			bank.DecreaseDemandDeposit(f.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
@@ -185,11 +185,11 @@ func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
 	}
 	difference := ld.GetBalance(f.GetId()) - core.MaxLiquidity
 	bank.AddDemandDeposit(f.GetId(), difference, ld)
-	f.bankBalance += uint32(difference)
+	f.bankBalance += difference
 }
 
-func (f *Firm) ClearSavings() {
-	f.bankBalance = 0
+func (f *Firm) SetSavings(amount int64) {
+	f.bankBalance = amount
 }
 
 func (f *Firm) GetPrice() int {

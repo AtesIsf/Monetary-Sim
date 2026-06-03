@@ -164,11 +164,11 @@ func (sim *Simulation) Run(ticks uint64) {
 					if ag.GetType() == core.Household {
 						h, _ := ag.(*agents.Household)
 						sim.bank.WithdrawAll(h.GetId(), &sim.ld)
-						h.ClearSavings()
+						h.SetSavings(0)
 					} else if ag.GetType() == core.Firm {
 						f, _ := ag.(*agents.Firm)
 						sim.bank.WithdrawAll(f.GetId(), &sim.ld)
-						f.ClearSavings()
+						f.SetSavings(0)
 					}
 
 
@@ -192,6 +192,25 @@ func (sim *Simulation) Run(ticks uint64) {
 			})
 		}
 		wg.Wait()
+
+		// sync work -> helps sync the bank balances with agents
+		for _, ag := range sim.agents {
+			wg.Go(func() {
+				if ag.GetType() == core.Bank {
+					return
+				}	
+
+				deposits := sim.bank.QueryDeposits(ag.GetId())
+				if (ag.GetType() == core.Household) {
+					h, _ := ag.(*agents.Household)
+					h.SetSavings(deposits)
+				} else if (ag.GetType() == core.Firm) {
+					f, _ := ag.(*agents.Firm)
+					f.SetSavings(deposits)
+				}
+			})
+		} 
+
 		sim.tick += 1
 		if sim.tick % sim.rec.GetFrequency() == 0 {
 			sim.rec.Write(sim.agents, sim.tick, &sim.ld)

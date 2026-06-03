@@ -24,7 +24,7 @@ type Household struct {
 	employer uint32 // id of employer
 
 	// Stored here, not in the bank for convenience
-	bankBalance uint32
+	bankBalance int64
 	loans []*Loan
 	loanLock sync.RWMutex
 }
@@ -117,7 +117,7 @@ func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
 
 		// Pay with demand deposits
 		if toBePaid <= uint64(h.bankBalance) {
-			h.bankBalance -= uint32(toBePaid)
+			h.bankBalance -= int64(toBePaid)
 			bank.DecreaseDemandDeposit(h.GetId(), int64(toBePaid))
 			loan.remainingAmount -= toBePaid
 
@@ -158,11 +158,11 @@ func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
 	}
 	difference := ld.GetBalance(h.GetId()) - core.MaxLiquidity
 	bank.AddDemandDeposit(h.GetId(), difference, ld)
-	h.bankBalance += uint32(difference)
+	h.bankBalance += difference
 }
 
-func (h *Household) ClearSavings() {
-	h.bankBalance = 0
+func (h *Household) SetSavings(amount int64) {
+	h.bankBalance = amount
 }
 
 func (h *Household) ReceiveLoan(loan *Loan) {
