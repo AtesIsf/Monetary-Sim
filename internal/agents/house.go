@@ -93,7 +93,7 @@ func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
 	// 3. Register expectation on the ledger
 	ld.SetWageExpectation(h.GetId(), h.wageExpectation)
 
-	consumption := h.CalculateConsumption(ld)
+	consumption := h.CalculateConsumption(ld, &macro)
 	balance := ld.GetBalance(h.GetId())
 
 	if balance >= consumption {
@@ -111,10 +111,12 @@ func (h *Household) GetType() core.AgentType {
 	return core.Household
 }
 
-func (h *Household) CalculateConsumption(ld *core.Ledger) int64 {
+func (h *Household) CalculateConsumption(ld *core.Ledger, 
+																				macro *core.MacroTracker) int64 {
+	h.c0 = uint32(float64(h.c0) * (*macro).GetInflationRate())
 	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
 	totalC := float64(h.c0) + balanceConsumption
-	
+
 	if h.IsEmployed() {
 		totalC += h.mpcY * float64(core.StandardWage)
 	}
