@@ -28,12 +28,14 @@ func (m *Matcher) BuyGoods(buyer *agents.Household, ld *core.Ledger) {
 	for _, ag := range m.sim.agents {
 		if ag.GetType() == core.Firm {
 			firm, ok := ag.(*agents.Firm)
-			if ok {
-				price := firm.GetPrice()
-				if lowestPrice == -1 || price < lowestPrice {
-					lowestPrice = price
-					cheapestFirm = firm
-				}
+			if !ok {
+				continue
+			}
+
+			price := firm.GetPrice()
+			if lowestPrice == -1 || price < lowestPrice {
+				lowestPrice = price
+				cheapestFirm = firm
 			}
 		}
 	}
