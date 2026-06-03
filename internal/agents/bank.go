@@ -105,7 +105,12 @@ func (b *Bank) GetId() uint32 {
 }
 
 func (b *Bank) Update(pol *core.Policies, ld *core.Ledger,
-ticks uint64) core.UpdateReturn {
+																					ticks uint64) core.UpdateReturn {
+	// Annualize loans -> not really realistic
+	if ticks % 12 != 0 {
+		return core.Nothing
+	}
+
 	b.ddLock.Lock()
 	defer b.ddLock.Unlock()
 

@@ -175,6 +175,11 @@ func (sim *Simulation) Run(ticks uint64) {
 				default: // result == core.Nothing, so do nothing
 				}
 
+				// Annualize loans -> not really realistic
+				if sim.tick % 12 != 0 {
+					return	
+				}
+
 				if ag.GetType() == core.Firm {
 					f, _ := ag.(*agents.Firm)
 					f.RepayLoans(&sim.bank, &sim.ld)
