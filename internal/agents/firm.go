@@ -158,7 +158,8 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	// TODO: adaptive wages later
 	totalSpending := len(f.employees) * core.Wage
 
-	if totalSpending >= 0 {
+	// Balance is enough to pay
+	if int64(totalSpending) < ld.GetBalance(f.GetId()) {
 		return returnVal
 	}
 
@@ -186,6 +187,13 @@ func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
 	difference := ld.GetBalance(f.GetId()) - core.MaxLiquidity
 	bank.AddDemandDeposit(f.GetId(), difference, ld)
 	f.bankBalance += difference
+}
+
+func (f *Firm) PayWages(ld *core.Ledger) {
+	for _, employeeID := range f.employees {
+		// TODO: adaptive wages later
+		ld.Transfer(f.GetId(), employeeID, core.Wage)
+	}
 }
 
 func (f *Firm) SetSavings(amount int64) {

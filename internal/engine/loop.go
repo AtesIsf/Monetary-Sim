@@ -100,6 +100,7 @@ func (sim *Simulation) Run(ticks uint64) {
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
 						sim.HireWorker(firm)
+						firm.PayWages(&sim.ld)
 					}
 
 				case core.FireWorkers:
@@ -114,6 +115,7 @@ func (sim *Simulation) Run(ticks uint64) {
 						}
 					}
 					sim.agentsMutex.Unlock()
+					firm.PayWages(&sim.ld)
 
 				// TODO: Make this logic more complex
 				case core.RequestLoan:
@@ -127,6 +129,7 @@ func (sim *Simulation) Run(ticks uint64) {
 						if ag.GetType() == core.Firm {
 							f, _ := ag.(*agents.Firm)
 							f.AddLoan(loan)
+							f.PayWages(&sim.ld)
 
 						} else if ag.GetType() == core.Household {
 							h, _ := ag.(*agents.Household)
@@ -169,6 +172,7 @@ func (sim *Simulation) Run(ticks uint64) {
 						f, _ := ag.(*agents.Firm)
 						sim.bank.WithdrawAll(f.GetId(), &sim.ld)
 						f.SetSavings(0)
+						f.PayWages(&sim.ld)
 					}
 
 
@@ -215,6 +219,7 @@ func (sim *Simulation) Run(ticks uint64) {
 				}
 			})
 		} 
+		wg.Wait()
 
 		sim.tick += 1
 		if sim.tick % sim.rec.GetFrequency() == 0 {
