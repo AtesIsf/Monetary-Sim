@@ -21,7 +21,6 @@ type Firm struct {
 	invCurr uint32 // current sold inventory
 	employees []uint32 // ids of employees
 	stockPrice int
-	mu sync.RWMutex
 
 	// Stored here, not in the bank for convenience
 	bankBalance int64
