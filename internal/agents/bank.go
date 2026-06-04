@@ -52,15 +52,17 @@ func (b *Bank) IssueLoan(ld *core.Ledger, target core.AgentId,
 		return nil // TODO: you may want to return an error in the future
 	}
 
+	amountWithInterest := amount * int64(interest) / 100
+
 	loan := Loan {
 		from: core.AgentId{ AType: core.Bank, Id: b.GetId() },
 		to: target,
-		initialAmount: uint64(amount),
-		remainingAmount: uint64(amount),
-		installment: 10,
+		initialAmount: uint64(amountWithInterest),
+		remainingAmount: uint64(amountWithInterest),
+		installment: 12,
 		interest: interest,
 	}
-	loanPtr := new(loan)
+	loanPtr := &loan
 
 	b.loans = append(b.loans, loanPtr)
 	ld.Transfer(b.GetId(), target.Id, amount)
@@ -116,7 +118,7 @@ func (b *Bank) Update(pol *core.Policies, ld *core.Ledger,
 
 	rate := pol.GetInterestRate() - 2
 	for id, amount := range b.demandDeposits {
-		b.demandDeposits[id] += amount * int64(rate)
+		b.demandDeposits[id] += amount * int64(rate) / 100
 	}
 
 	return core.Nothing

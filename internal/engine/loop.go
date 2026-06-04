@@ -128,7 +128,8 @@ func (sim *Simulation) Run(ticks uint64) {
 						AType: ag.GetType(),
 					}
 					// TODO: Change these placeholder values later
-					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, 5)
+					loanInterest := sim.pol.GetInterestRate() + 2
+					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, loanInterest)
 					if loan != nil {
 						if ag.GetType() == core.Firm {
 							f, _ := ag.(*agents.Firm)
