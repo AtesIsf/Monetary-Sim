@@ -21,6 +21,7 @@ type Firm struct {
 	invCurr uint32 // current sold inventory
 	employees []uint32 // ids of employees
 	stockPrice int
+	mu sync.RWMutex
 
 	// Stored here, not in the bank for convenience
 	bankBalance int64
@@ -166,12 +167,13 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	}
 
 	// Balance is enough to pay
-	if totalSpending < ld.GetBalance(f.GetId()) {
+	balance := ld.GetBalance(f.GetId())
+	if balance >= totalSpending {
 		return returnVal
 	}
 
 	// savings are enough to cover the deficit
-	if totalSpending + f.bankBalance >= 0 {
+	if balance + f.bankBalance >= totalSpending {
 		returnVal = core.DrawSavings
 	} else { // take out a loan
 		returnVal = core.RequestLoan

@@ -22,6 +22,7 @@ type Household struct {
 	mpcB float64 // from balance -> low
 	c0 uint32 // autonomoues consumption
 	employer uint32 // id of employer
+	mu sync.RWMutex
 
 	// Stored here, not in the bank for convenience
 	bankBalance int64
@@ -62,10 +63,14 @@ func (h *Household) AddLoan(loan *Loan) {
 
 // If self.id = employer.id, then there is no employer
 func (h *Household) GetEmployer() uint32 {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
 	return h.employer
 }
 
 func (h *Household) SetEmployer(id uint32) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
 	h.employer = id
 }
 
