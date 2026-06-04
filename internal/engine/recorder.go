@@ -26,7 +26,7 @@ func InitRecorder(dest string, frequency uint64) Recorder {
 	file, _ := os.Create(dest)
 	bufWriter := bufio.NewWriterSize(file, 4 * 1024 * 1024) // 4MB
 	writer := csv.NewWriter(bufWriter)
-	writer.Write([]string{ "Tick", "Id", "Type", "Balance", "Employer", "Price" })
+	writer.Write([]string{ "Tick", "Id", "Type", "Balance", "Employer", "Price", "WageExpectation" })
 
 	return Recorder{ file: file, writer: writer, frequency: frequency }
 }
@@ -43,18 +43,20 @@ func (r *Recorder) Close() {
 func (r *Recorder) Write(arr []core.Agent, tick uint64, ld *core.Ledger) {
 	for _, ag := range arr {
 
-		// Tick, Id, Type, Balance, Employer, Price
-		line := make([]string, 6)
+		// Tick, Id, Type, Balance, Employer, Price, WageExpectation
+		line := make([]string, 7)
 		line[0] = fmt.Sprintf("%d", tick)
 		line[1] = fmt.Sprintf("%d", ag.GetId())
 		line[3] = fmt.Sprintf("%d", ld.GetBalance(ag.GetId()))
 		line[5] = "0" // Default price
+		line[6] = "0" // Default wage expectation
 
 		switch ag.GetType() {
 		case core.Household:
 			house, _ := ag.(*agents.Household)
 			line[2] = "Household"
 			line[4] = fmt.Sprintf("%d", house.GetEmployer())
+			line[6] = fmt.Sprintf("%d", ld.GetWageExpectation(house.GetId()))
 
 		case core.Firm:
 			firm, _ := ag.(*agents.Firm)

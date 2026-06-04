@@ -50,12 +50,14 @@ def calculate_macro_variables(df: pd.DataFrame) -> pd.DataFrame:
 
     macro_data['Unemployment Rate'] = grouped.apply(calc_unemployment)
 
-    # 4. Total Employment (Absolute numbers)
-    macro_data['Total Employed'] = grouped.apply(
-        lambda d: len(
-            d[(d['Type'] == 'Household') & (d['Employer'] != d['Id'])]
-        )
-    )
+    # 4. Average Wage Expectation
+    def calc_wage_expectation(tick_df: pd.DataFrame) -> float:
+        households = tick_df[tick_df['Type'] == 'Household']
+        if households.empty:
+            return 0.0
+        return float(households['WageExpectation'].mean())
+
+    macro_data['Average Wage Expectation'] = grouped.apply(calc_wage_expectation)
 
     # Calculate rolling averages for smoothing (window size 10)
     window = 10
@@ -128,16 +130,16 @@ def plot_macro_variables(macro_df: pd.DataFrame) -> None:
     axes[1, 0].legend()
     axes[1, 0].grid(True)
 
-    # Plot 4: Absolute Employment
+    # Plot 4: Average Wage Expectation
     axes[1, 1].plot(
-        macro_df.index, macro_df['Total Employed'], color='orange', alpha=0.3
+        macro_df.index, macro_df['Average Wage Expectation'], color='orange', alpha=0.3
     )
     axes[1, 1].plot(
-        macro_df.index, macro_df['Total Employed Smooth'], color='orange', linewidth=2, label='Trend'
+        macro_df.index, macro_df['Average Wage Expectation Smooth'], color='orange', linewidth=2, label='Trend'
     )
-    axes[1, 1].set_title('Total Number of Employed Households')
+    axes[1, 1].set_title('Average Wage Expectation')
     axes[1, 1].set_xlabel('Tick')
-    axes[1, 1].set_ylabel('Workers')
+    axes[1, 1].set_ylabel('Wage Expectation')
     axes[1, 1].legend()
     axes[1, 1].grid(True)
 
@@ -169,6 +171,8 @@ if __name__ == "__main__":
     df_raw['Employer'] = df_raw['Employer'].fillna(0).astype(int)
     if 'Price' in df_raw.columns:
         df_raw['Price'] = df_raw['Price'].fillna(0).astype(float)
+    if 'WageExpectation' in df_raw.columns:
+        df_raw['WageExpectation'] = df_raw['WageExpectation'].fillna(0).astype(float)
 
     print("Calculating macroeconomic indicators...")
     macro_data_df: pd.DataFrame = calculate_macro_variables(df_raw)
