@@ -13,7 +13,8 @@ import "sync"
 const TicksPerYear = 12
 
 type Policies struct {
-	mutex sync.RWMutex
+	interestMutex sync.RWMutex
+	reserveMutex sync.RWMutex
 	// both values below are integers between 0 and 100
 	interestRate uint32
 	reserveReq uint32
@@ -25,13 +26,25 @@ func (p *Policies) Populate() {
 }
 
 func (p *Policies) GetInterestRate() uint32 {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.interestMutex.RLock()
+	defer p.interestMutex.RUnlock()
 	return p.interestRate
 }
 
+func (p *Policies) SetInterestRate(rate uint32) {
+	p.interestMutex.Lock()
+	defer p.interestMutex.Unlock()
+	p.interestRate = rate
+}
+
 func (p *Policies) GetReserveReq() uint32 {
-	p.mutex.RLock()
-	defer p.mutex.RUnlock()
+	p.reserveMutex.RLock()
+	defer p.reserveMutex.RUnlock()
 	return p.reserveReq
+}
+
+func (p *Policies) SetReserveReq(rate uint32) {
+	p.reserveMutex.RLock()
+	defer p.reserveMutex.RUnlock()
+	p.reserveReq = rate
 }
