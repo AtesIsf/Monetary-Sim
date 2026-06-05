@@ -87,6 +87,10 @@ func (sim *Simulation) Close() {
 	sim.rec.Close()
 }
 
+func (sim *Simulation) UpdatePolicyRate(rate uint32) {
+	sim.pol.SetInterestRate(rate)
+}
+
 func (sim *Simulation) Run(ticks uint64) {
 	for range ticks {
 		var wg sync.WaitGroup
