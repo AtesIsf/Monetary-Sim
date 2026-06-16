@@ -47,14 +47,17 @@ func (ld *Ledger) AddToBalance(id uint32, amount int64) {
 }
 
 // Amount is in cents! This prevents floating point errors.
-func (ld *Ledger) Transfer(from uint32, to uint32, amount int64) {
+func (ld *Ledger) Transfer(from uint32, to uint32, amount int64) error {
 	ld.balanceMutex.Lock()
 	defer ld.balanceMutex.Unlock()
 
-	// Allowing negative balances
-	// I guess this would also work for borrowing, given a negative amount
+	if ld.balances[from] < amount {
+		return fmt.Errorf("insufficient balance: agent %d has %d, tried to transfer %d", from, ld.balances[from], amount)
+	}
+
 	ld.balances[from] -= amount
 	ld.balances[to] += amount
+	return nil
 }
 
 func (ld *Ledger) PrintBalances() {

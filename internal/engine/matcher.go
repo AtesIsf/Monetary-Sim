@@ -65,7 +65,9 @@ func (m *Matcher) BuyGoods(buyer *agents.Household, ld *core.Ledger) {
 		}
 
 		cost := unitsToBuy * price
-		ld.Transfer(buyer.GetId(), cheapestFirm.GetId(), cost)
+		if err := ld.Transfer(buyer.GetId(), cheapestFirm.GetId(), cost); err != nil {
+			break
+		}
 		cheapestFirm.PerformSale(uint32(unitsToBuy))
 
 		remainingBudget -= cost

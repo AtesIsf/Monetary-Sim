@@ -116,7 +116,7 @@ func TestLedger_Transfer(t *testing.T) {
 			if tt.from != tt.to {
 				ld.AddToBalance(tt.to, tt.toStart)
 			}
-			ld.Transfer(tt.from, tt.to, tt.amount)
+			_ = ld.Transfer(tt.from, tt.to, tt.amount)
 			if got := ld.GetBalance(tt.from); got != tt.wantFromEnd {
 				t.Errorf("from GetBalance() = %d, want %d", got, tt.wantFromEnd)
 			}
@@ -127,17 +127,20 @@ func TestLedger_Transfer(t *testing.T) {
 	}
 }
 
-func TestLedger_Transfer_AllowsNegativeBalance(t *testing.T) {
+func TestLedger_Transfer_DisallowsNegativeBalance(t *testing.T) {
 	var ld Ledger
 	ld.Init()
 	ld.AddToBalance(1, 10)
 	ld.AddToBalance(2, 20)
-	ld.Transfer(1, 2, 50)
-	if bal1 := ld.GetBalance(1); bal1 != -40 {
-		t.Errorf("expected negative balance of -40, got %d", bal1)
+	err := ld.Transfer(1, 2, 50)
+	if err == nil {
+		t.Error("expected error due to insufficient balance, got nil")
 	}
-	if bal2 := ld.GetBalance(2); bal2 != 70 {
-		t.Errorf("expected balance of 70, got %d", bal2)
+	if bal1 := ld.GetBalance(1); bal1 != 10 {
+		t.Errorf("expected balance of 1 to remain 10, got %d", bal1)
+	}
+	if bal2 := ld.GetBalance(2); bal2 != 20 {
+		t.Errorf("expected balance of 2 to remain 20, got %d", bal2)
 	}
 }
 
