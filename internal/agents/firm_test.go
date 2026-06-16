@@ -20,8 +20,8 @@ func TestNewFirm(t *testing.T) {
 	if f.invCurr != 0 {
 		t.Errorf("expected invCurr to be 0, got %d", f.invCurr)
 	}
-	if f.invTarget < 500 || f.invTarget > 600 {
-		t.Errorf("expected invTarget to be in [500, 600], got %d", f.invTarget)
+	if f.invTarget < 25 || f.invTarget > 30 {
+		t.Errorf("expected invTarget to be in [25, 30], got %d", f.invTarget)
 	}
 }
 
@@ -116,8 +116,8 @@ func TestFirm_AdaptPrice_MinPriceFloor(t *testing.T) {
 
 func TestFirm_Update_HireWhenUnderTarget(t *testing.T) {
 	f := NewFirm(1)
-	f.invTarget = 500
-	f.invCurr = 400
+	f.invTarget = 25
+	f.invCurr = 20
 	var ld core.Ledger
 	ld.Init()
 	ld.AddToBalance(1, 1000)
@@ -126,15 +126,15 @@ func TestFirm_Update_HireWhenUnderTarget(t *testing.T) {
 	pol.Populate()
 
 	got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
-	if got != core.HireWorkers {
-		t.Errorf("expected HireWorkers, got %d", got)
+	if got.Action != core.HireWorkers {
+		t.Errorf("expected HireWorkers, got %d", got.Action)
 	}
 }
 
 func TestFirm_Update_FireWhenOverTarget(t *testing.T) {
 	f := NewFirm(1)
-	f.invTarget = 500
-	f.invCurr = 600
+	f.invTarget = 25
+	f.invCurr = 30
 	f.AddEmployee(2)
 	var ld core.Ledger
 	ld.Init()
@@ -144,14 +144,14 @@ func TestFirm_Update_FireWhenOverTarget(t *testing.T) {
 	pol.Populate()
 
 	got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
-	if got != core.FireWorkers {
-		t.Errorf("expected FireWorkers, got %d", got)
+	if got.Action != core.FireWorkers {
+		t.Errorf("expected FireWorkers, got %d", got.Action)
 	}
 }
 
 func TestFirm_Update_YearlyReset(t *testing.T) {
 	f := NewFirm(1)
-	f.invCurr = 400
+	f.invCurr = 20
 	var ld core.Ledger
 	ld.Init()
 	ld.AddToBalance(1, 1000)
@@ -173,7 +173,7 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 		ledgerBal   int64
 		bankBal     int64
 		employees   []uint32
-		expectedVal core.UpdateReturn
+		expectedVal core.ActionType
 	}{
 		{
 			name:        "sufficient ledger balance",
@@ -201,7 +201,7 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			f := NewFirm(1)
-			f.invTarget = 500
+			f.invTarget = 25
 			f.invCurr = 0
 			for _, emp := range tt.employees {
 				f.AddEmployee(emp)
@@ -216,8 +216,8 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 			}
 
 			got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
-			if got != tt.expectedVal {
-				t.Errorf("got %d, want %d", got, tt.expectedVal)
+			if got.Action != tt.expectedVal {
+				t.Errorf("got %d, want %d", got.Action, tt.expectedVal)
 			}
 		})
 	}

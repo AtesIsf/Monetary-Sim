@@ -33,7 +33,7 @@ func TestBuyGoods_SelectsCheapestFirm(t *testing.T) {
 	// Increase firm2 price to 30
 	for firm2.GetPrice() < 30 {
 		// invCurr = target + 100 > invTarget, so delta < 0, price increases
-		firm2.PerformSale(int64(firm2.GetPrice() * 100)) // ensure invCurr > invTarget
+		firm2.PerformSale(100) // ensure invCurr > invTarget
 		firm2.Update(&pol, &sim.ld, mt, 1)
 	}
 
@@ -42,6 +42,8 @@ func TestBuyGoods_SelectsCheapestFirm(t *testing.T) {
 
 	matcher := NewMatcher(&sim)
 	buyer.SetSavings(0)
+	firm1.AddInventory(100)
+	firm2.AddInventory(100)
 
 	matcher.BuyGoods(buyer, &sim.ld)
 
@@ -67,6 +69,7 @@ func TestBuyGoods_TransfersCorrectAmount(t *testing.T) {
 
 	matcher := NewMatcher(&sim)
 	sim.ld.AddToBalance(1, 1000)
+	firm.AddInventory(100)
 
 	matcher.BuyGoods(buyer, &sim.ld)
 
@@ -100,6 +103,7 @@ func TestBuyGoods_RoundsDownToMultiple(t *testing.T) {
 	sim.agentsMutex.Unlock()
 
 	matcher := NewMatcher(&sim)
+	firm.AddInventory(100)
 	
 	var tracker core.MacroTracker = &sim
 	maxC := buyer.CalculateConsumption(&sim.ld, &tracker)

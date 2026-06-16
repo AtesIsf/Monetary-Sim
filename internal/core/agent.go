@@ -19,9 +19,9 @@ type Agent interface {
 	Log()
 }
 
-type UpdateReturn uint8
+type ActionType uint8
 const (
-	Nothing UpdateReturn = iota
+	Nothing ActionType = iota
 	// Household Update() Returns
 	Consume
 	// Firm Update() Returns
@@ -31,6 +31,11 @@ const (
 	DrawSavings
 	// Bank Update() Returns
 )
+
+type UpdateReturn struct {
+	Action ActionType
+	Count  uint32
+}
 
 // These help identify what type of agent
 type AgentType uint8

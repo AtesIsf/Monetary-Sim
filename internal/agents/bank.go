@@ -110,7 +110,7 @@ func (b *Bank) Update(pol *core.Policies, ld *core.Ledger,
 									tr core.MacroTracker, ticks uint64) core.UpdateReturn {
 	// Annualize loans -> not really realistic
 	if ticks % 12 != 0 {
-		return core.Nothing
+		return core.UpdateReturn{Action: core.Nothing}
 	}
 
 	b.ddLock.Lock()
@@ -125,7 +125,7 @@ func (b *Bank) Update(pol *core.Policies, ld *core.Ledger,
 		ld.Transfer(b.GetId(), id, interest)
 	}
 
-	return core.Nothing
+	return core.UpdateReturn{Action: core.Nothing}
 }
 
 func (b *Bank) GetType() core.AgentType {

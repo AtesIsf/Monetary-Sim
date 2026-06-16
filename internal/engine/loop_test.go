@@ -147,6 +147,7 @@ func TestRun_ConsumeCycle(t *testing.T) {
 
 	sim.ld.AddToBalance(house.GetId(), 1000)
 	firmInitialBal := sim.ld.GetBalance(firm.GetId())
+	firm.AddInventory(10)
 
 	sim.Run(1)
 
@@ -197,7 +198,7 @@ func findNothingFirm(id uint32) *agents.Firm {
 	for range 1000 {
 		f.PerformSale(1)
 		ret := f.Update(&pol, &ld, mockMacroTracker{}, 1)
-		if ret == core.Nothing {
+		if ret.Action == core.Nothing {
 			return f
 		}
 	}

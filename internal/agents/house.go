@@ -102,14 +102,14 @@ func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
 	balance := ld.GetBalance(h.GetId())
 
 	if balance >= consumption {
-		return core.Consume
+		return core.UpdateReturn{Action: core.Consume}
 	}
 
 	if balance + int64(h.bankBalance) >= consumption {
-		return core.DrawSavings
+		return core.UpdateReturn{Action: core.DrawSavings}
 	}
 	// the case where balance + savings don't add up to the consumption
-	return core.RequestLoan
+	return core.UpdateReturn{Action: core.RequestLoan}
 }
 
 func (h *Household) GetType() core.AgentType {

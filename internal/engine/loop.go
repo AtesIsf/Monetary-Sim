@@ -101,28 +101,33 @@ func (sim *Simulation) Run(ticks uint64) {
 
 				// Handling update return here
 
-				switch result {
+				switch result.Action {
 				// Firm
 				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
-						sim.matcher.HireWorker(firm)
+						sim.matcher.HireWorkers(firm, result.Count)
 						firm.PayWages(&sim.ld)
 					}
 
 				case core.FireWorkers:
 					firm, _ := ag.(*agents.Firm)
-					id := firm.PopEmployee()
-					sim.agentsMutex.Lock()
-					for _, a := range sim.agents {
-						if a.GetType() == core.Household && a.GetId() == id {
-							house, _ := a.(*agents.Household)
-							// Set employer to self to indicate unemployment
-							house.SetEmployer(house.GetId())
+					for range result.Count {
+						if firm.GetNEmployees() == 0 {
 							break
 						}
+						id := firm.PopEmployee()
+						sim.agentsMutex.Lock()
+						for _, a := range sim.agents {
+							if a.GetType() == core.Household && a.GetId() == id {
+								house, _ := a.(*agents.Household)
+								// Set employer to self to indicate unemployment
+								house.SetEmployer(house.GetId())
+								break
+							}
+						}
+						sim.agentsMutex.Unlock()
 					}
-					sim.agentsMutex.Unlock()
 					firm.PayWages(&sim.ld)
 
 				// TODO: Make this logic more complex
@@ -165,8 +170,7 @@ func (sim *Simulation) Run(ticks uint64) {
 						f.PayWages(&sim.ld)
 					}
 
-
-				default: // result == core.Nothing, so do nothing
+				default: // result.Action == core.Nothing, so do nothing
 				}
 
 				// Annualize loans -> not really realistic

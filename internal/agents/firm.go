@@ -17,8 +17,9 @@ import (
 
 type Firm struct {
 	id core.AgentId
-	invTarget uint32 // targeted inventory, measured in monetary units
-	invCurr uint32 // current sold inventory
+	invTarget uint32 // targeted inventory, measured in units of goods
+	invCurr uint32 // current sold inventory, in units
+	inventory uint32 // current unsold stock
 	employees []uint32 // ids of employees
 	stockPrice int
 
@@ -26,6 +27,7 @@ type Firm struct {
 	bankBalance int64
 	loans []*Loan
 	loanLock sync.RWMutex
+	firmStateMutex sync.Mutex // protects firm's state
 }
 
 func NewFirm(id uint32) *Firm {
@@ -33,9 +35,9 @@ func NewFirm(id uint32) *Firm {
 	f.id.AType = core.Firm
 	f.id.Id = id
 
-	// TODO: You may want to change how the target is set in the future
-	f.invTarget = uint32(rand.IntN(100)) + 500 // 500 <= target <= 600
+	f.invTarget = uint32(rand.IntN(6)) + 25 // quantity target: 25 <= target <= 30
 	f.invCurr = 0
+	f.inventory = 0
 
 	f.stockPrice = core.Price
 
@@ -101,11 +103,15 @@ func (f *Firm) RepayLoans(bank *Bank, ld *core.Ledger) {
 }
 
 func (f *Firm) AddEmployee(id uint32) {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	f.employees = append(f.employees, id)
 }
 
 // Removes a random employee and returns its id
 func (f *Firm) PopEmployee() uint32 {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	randomIndex := rand.IntN(len(f.employees))
 	id := f.employees[randomIndex]
 	f.employees = slices.Delete(f.employees, randomIndex, randomIndex + 1)
@@ -113,12 +119,27 @@ func (f *Firm) PopEmployee() uint32 {
 }
 
 func (f *Firm) GetNEmployees() int {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	return len(f.employees)
 }
 
-// Call this after a household consumes to update invCur
-func (f *Firm) PerformSale(amount int64) {
-	f.invCurr += uint32(amount)
+func (f *Firm) GetInventory() uint32 {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
+	return f.inventory
+}
+
+// Call this after a household consumes to update invCur and inventory
+func (f *Firm) PerformSale(units uint32) {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
+	if f.inventory >= units {
+		f.inventory -= units
+	} else {
+		f.inventory = 0
+	}
+	f.invCurr += units
 }
 
 func (f *Firm) GetId() uint32 {
@@ -127,13 +148,14 @@ func (f *Firm) GetId() uint32 {
 
 // delta -> target - curr -> helps us modify the price
 func (f *Firm) adaptPrice(delta int64) {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	var value int
 
 	if delta > 0 { // below target -> decrease prices
 		value = -(rand.IntN(3) + 1)
 	} else if delta < 0 { // above target -> increase prices
 		value = rand.IntN(3) + 1
-
 	} // else -> value holds its zero value
 
 	f.stockPrice += value
@@ -142,22 +164,53 @@ func (f *Firm) adaptPrice(delta int64) {
 
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 										_ core.MacroTracker, tick uint64) core.UpdateReturn {
-	var returnVal core.UpdateReturn = core.Nothing
+	var returnVal core.UpdateReturn = core.UpdateReturn{Action: core.Nothing}
+	var action core.ActionType = core.Nothing
+	var count uint32 = 0
+
+	f.firmStateMutex.Lock()
 	if tick % core.TicksPerYear == 0 {
 		f.invCurr = 0 // reset tracked value since it is a new year
 	}
 
+	// 1 unit produced per employee per tick
+	f.inventory += uint32(len(f.employees))
+
 	if f.invCurr < f.invTarget { // Underproducing, so hire
-		returnVal = core.HireWorkers
+		action = core.HireWorkers
+		delta := int64(f.invTarget) - int64(f.invCurr)
+		ticksRemaining := 12 - (tick % 12)
+		if ticksRemaining > 0 {
+			count = uint32(delta / int64(ticksRemaining))
+		}
+		if count == 0 {
+			count = 1
+		}
 	} else if f.invCurr > f.invTarget && len(f.employees) > 0 { // Overproducing
-		returnVal = core.FireWorkers
+		action = core.FireWorkers
+		delta := int64(f.invCurr) - int64(f.invTarget)
+		ticksRemaining := 12 - (tick % 12)
+		if ticksRemaining > 0 {
+			count = uint32(delta / int64(ticksRemaining))
+		}
+		if count == 0 {
+			count = 1
+		}
+		if count > uint32(len(f.employees)) {
+			count = uint32(len(f.employees))
+		}
 	}
 
-	f.adaptPrice(int64(f.invTarget) - int64(f.invCurr))
+	deltaAdapt := int64(f.invTarget) - int64(f.invCurr)
+	employeesCopy := make([]uint32, len(f.employees))
+	copy(employeesCopy, f.employees)
+	f.firmStateMutex.Unlock()
+
+	f.adaptPrice(deltaAdapt)
 
 	// Sum actual employee wage expectations
 	var totalSpending int64 = 0
-	for _, empId := range f.employees {
+	for _, empId := range employeesCopy {
 		wage := ld.GetWageExpectation(empId)
 		if wage <= 0 {
 			wage = core.MinWage
@@ -168,14 +221,11 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	// Balance is enough to pay
 	balance := ld.GetBalance(f.GetId())
 	if balance >= totalSpending {
-		return returnVal
-	}
-
-	// savings are enough to cover the deficit
-	if balance + f.bankBalance >= totalSpending {
-		returnVal = core.DrawSavings
+		returnVal = core.UpdateReturn{Action: action, Count: count}
+	} else if balance + f.bankBalance >= totalSpending {
+		returnVal = core.UpdateReturn{Action: core.DrawSavings}
 	} else { // take out a loan
-		returnVal = core.RequestLoan
+		returnVal = core.UpdateReturn{Action: core.RequestLoan}
 	}
 
 	return returnVal
@@ -185,6 +235,8 @@ func (f *Firm) AddLoan(loan *Loan) {
 	if loan == nil {
 		return
 	}
+	f.loanLock.Lock()
+	defer f.loanLock.Unlock()
 	f.loans = append(f.loans, loan)
 }
 
@@ -194,11 +246,18 @@ func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
 	}
 	difference := ld.GetBalance(f.GetId()) - core.MaxLiquidity
 	bank.AddDemandDeposit(f.GetId(), difference, ld)
+	f.firmStateMutex.Lock()
 	f.bankBalance += difference
+	f.firmStateMutex.Unlock()
 }
 
 func (f *Firm) PayWages(ld *core.Ledger) {
-	for _, id := range f.employees {
+	f.firmStateMutex.Lock()
+	employeesCopy := make([]uint32, len(f.employees))
+	copy(employeesCopy, f.employees)
+	f.firmStateMutex.Unlock()
+
+	for _, id := range employeesCopy {
 		wage := ld.GetWageExpectation(id)
 		if wage <= 0 {
 			wage = core.MinWage
@@ -208,10 +267,14 @@ func (f *Firm) PayWages(ld *core.Ledger) {
 }
 
 func (f *Firm) SetSavings(amount int64) {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	f.bankBalance = amount
 }
 
 func (f *Firm) GetPrice() int {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
 	return f.stockPrice
 }
 
@@ -219,8 +282,20 @@ func (f *Firm) GetType() core.AgentType {
 	return core.Firm
 }
 
+func (f *Firm) AddInventory(units uint32) {
+	f.firmStateMutex.Lock()
+	defer f.firmStateMutex.Unlock()
+	f.inventory += units
+}
+
 func (f *Firm) Log() {
+	f.firmStateMutex.Lock()
+	target := f.invTarget
+	curr := f.invCurr
+	price := f.stockPrice
+	nEmp := len(f.employees)
+	f.firmStateMutex.Unlock()
 	fmt.Printf("Firm <%d> -- Target: %d -- Actual: %d -- Price: %d -- %d Employees\n", 
-							f.GetId(), f.invTarget, f.invCurr, f.stockPrice, len(f.employees))
+							f.GetId(), target, curr, price, nEmp)
 }
 
