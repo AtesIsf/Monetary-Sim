@@ -101,13 +101,44 @@ func (sim *Simulation) Run(ticks uint64) {
 
 				// Handling update return here
 
+				// 1. Process financing strategy first
+				switch result.Finance {
+				case core.DrawSavings:
+					if ag.GetType() == core.Household {
+						h, _ := ag.(*agents.Household)
+						sim.bank.WithdrawAll(h.GetId(), &sim.ld)
+						h.SetSavings(0)
+					} else if ag.GetType() == core.Firm {
+						f, _ := ag.(*agents.Firm)
+						sim.bank.WithdrawAll(f.GetId(), &sim.ld)
+						f.SetSavings(0)
+					}
+
+				case core.RequestLoan:
+					agentId := core.AgentId {
+						Id: ag.GetId(),
+						AType: ag.GetType(),
+					}
+					// TODO: Change these placeholder values later
+					loanInterest := sim.pol.GetInterestRate() + 2
+					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, loanInterest)
+					if loan != nil {
+						if ag.GetType() == core.Firm {
+							f, _ := ag.(*agents.Firm)
+							f.AddLoan(loan)
+						} else if ag.GetType() == core.Household {
+							h, _ := ag.(*agents.Household)
+							h.AddLoan(loan)
+						}
+					}
+				}
+
+				// 2. Process business strategy next
 				switch result.Action {
-				// Firm
 				case core.HireWorkers:
 					if ag.GetType() == core.Firm {
 						firm, _ := ag.(*agents.Firm)
 						sim.matcher.HireWorkers(firm, result.Count)
-						firm.PayWages(&sim.ld)
 					}
 
 				case core.FireWorkers:
@@ -128,49 +159,16 @@ func (sim *Simulation) Run(ticks uint64) {
 						}
 						sim.agentsMutex.Unlock()
 					}
-					firm.PayWages(&sim.ld)
 
-				// TODO: Make this logic more complex
-				case core.RequestLoan:
-					agentId := core.AgentId {
-						Id: ag.GetId(),
-						AType: ag.GetType(),
-					}
-					// TODO: Change these placeholder values later
-					loanInterest := sim.pol.GetInterestRate() + 2
-					loan := sim.bank.IssueLoan(&sim.ld, agentId, 200, loanInterest)
-					if loan != nil {
-						if ag.GetType() == core.Firm {
-							f, _ := ag.(*agents.Firm)
-							f.AddLoan(loan)
-							f.PayWages(&sim.ld)
-
-						} else if ag.GetType() == core.Household {
-							h, _ := ag.(*agents.Household)
-							h.AddLoan(loan)
-						}
-					}
-
-				// Household
 				case core.Consume:
 					house, _ := ag.(*agents.Household)
 					sim.matcher.BuyGoods(house, &sim.ld)
+				}
 
-				// TODO: this pushes back meaningful activity by a tick!
-				// May want to recurse in the future
-				case core.DrawSavings:
-					if ag.GetType() == core.Household {
-						h, _ := ag.(*agents.Household)
-						sim.bank.WithdrawAll(h.GetId(), &sim.ld)
-						h.SetSavings(0)
-					} else if ag.GetType() == core.Firm {
-						f, _ := ag.(*agents.Firm)
-						sim.bank.WithdrawAll(f.GetId(), &sim.ld)
-						f.SetSavings(0)
-						f.PayWages(&sim.ld)
-					}
-
-				default: // result.Action == core.Nothing, so do nothing
+				// 3. Pay wages for firms if they performed any operation
+				if ag.GetType() == core.Firm && (result.Action != core.Nothing || result.Finance != core.Nothing) {
+					firm, _ := ag.(*agents.Firm)
+					firm.PayWages(&sim.ld)
 				}
 
 				// Annualize loans -> not really realistic

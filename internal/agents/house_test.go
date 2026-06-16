@@ -311,7 +311,10 @@ func TestUpdate_ReturnsConsume(t *testing.T) {
 	got := h.Update(&pol, &ld, mt, 1)
 
 	if got.Action != core.Consume {
-		t.Errorf("expected Update to return core.Consume, got %d", got.Action)
+		t.Errorf("expected Action core.Consume, got %d", got.Action)
+	}
+	if got.Finance != core.Nothing {
+		t.Errorf("expected Finance core.Nothing, got %d", got.Finance)
 	}
 }
 
@@ -332,8 +335,11 @@ func TestUpdate_ReturnsDrawSavings(t *testing.T) {
 	mt := mockMacro{unemployment: 0.06, inflation: 1.0}
 	got := h.Update(&pol, &ld, mt, 1)
 
-	if got.Action != core.DrawSavings {
-		t.Errorf("expected Update to return core.DrawSavings, got %d", got.Action)
+	if got.Action != core.Consume {
+		t.Errorf("expected Action core.Consume, got %d", got.Action)
+	}
+	if got.Finance != core.DrawSavings {
+		t.Errorf("expected Finance core.DrawSavings, got %d", got.Finance)
 	}
 }
 
@@ -354,8 +360,11 @@ func TestUpdate_ReturnsRequestLoan(t *testing.T) {
 	mt := mockMacro{unemployment: 0.06, inflation: 1.0}
 	got := h.Update(&pol, &ld, mt, 1)
 
-	if got.Action != core.RequestLoan {
-		t.Errorf("expected Update to return core.RequestLoan, got %d", got.Action)
+	if got.Action != core.Consume {
+		t.Errorf("expected Action core.Consume, got %d", got.Action)
+	}
+	if got.Finance != core.RequestLoan {
+		t.Errorf("expected Finance core.RequestLoan, got %d", got.Finance)
 	}
 }
 

@@ -44,7 +44,7 @@ func (p *Policies) GetReserveReq() uint32 {
 }
 
 func (p *Policies) SetReserveReq(rate uint32) {
-	p.reserveMutex.RLock()
-	defer p.reserveMutex.RUnlock()
+	p.reserveMutex.Lock()
+	defer p.reserveMutex.Unlock()
 	p.reserveReq = rate
 }

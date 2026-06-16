@@ -169,32 +169,36 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 	pol.Populate()
 
 	tests := []struct {
-		name        string
-		ledgerBal   int64
-		bankBal     int64
-		employees   []uint32
-		expectedVal core.ActionType
+		name            string
+		ledgerBal       int64
+		bankBal         int64
+		employees       []uint32
+		expectedAction  core.ActionType
+		expectedFinance core.ActionType
 	}{
 		{
-			name:        "sufficient ledger balance",
-			ledgerBal:   100,
-			bankBal:     0,
-			employees:   []uint32{2}, // expects 20
-			expectedVal: core.HireWorkers, // invCurr=0 < invTarget, enough balance -> returnVal
+			name:            "sufficient ledger balance",
+			ledgerBal:       100,
+			bankBal:         0,
+			employees:       []uint32{2}, // expects 20
+			expectedAction:  core.HireWorkers,
+			expectedFinance: core.Nothing,
 		},
 		{
-			name:        "insufficient ledger, sufficient bank balance",
-			ledgerBal:   10,
-			bankBal:     50,
-			employees:   []uint32{2},      // expects 20
-			expectedVal: core.DrawSavings, // DrawSavings
+			name:            "insufficient ledger, sufficient bank balance",
+			ledgerBal:       10,
+			bankBal:         50,
+			employees:       []uint32{2}, // expects 20
+			expectedAction:  core.HireWorkers,
+			expectedFinance: core.DrawSavings,
 		},
 		{
-			name:        "insufficient ledger and bank balance",
-			ledgerBal:   0,
-			bankBal:     0,
-			employees:   []uint32{2},
-			expectedVal: core.RequestLoan,
+			name:            "insufficient ledger and bank balance",
+			ledgerBal:       0,
+			bankBal:         0,
+			employees:       []uint32{2},
+			expectedAction:  core.HireWorkers,
+			expectedFinance: core.RequestLoan,
 		},
 	}
 
@@ -216,8 +220,11 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 			}
 
 			got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
-			if got.Action != tt.expectedVal {
-				t.Errorf("got %d, want %d", got.Action, tt.expectedVal)
+			if got.Action != tt.expectedAction {
+				t.Errorf("got Action %d, want %d", got.Action, tt.expectedAction)
+			}
+			if got.Finance != tt.expectedFinance {
+				t.Errorf("got Finance %d, want %d", got.Finance, tt.expectedFinance)
 			}
 		})
 	}

@@ -164,7 +164,6 @@ func (f *Firm) adaptPrice(delta int64) {
 
 func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 										_ core.MacroTracker, tick uint64) core.UpdateReturn {
-	var returnVal core.UpdateReturn = core.UpdateReturn{Action: core.Nothing}
 	var action core.ActionType = core.Nothing
 	var count uint32 = 0
 
@@ -220,15 +219,21 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 
 	// Balance is enough to pay
 	balance := ld.GetBalance(f.GetId())
-	if balance >= totalSpending {
-		returnVal = core.UpdateReturn{Action: action, Count: count}
-	} else if balance + f.bankBalance >= totalSpending {
-		returnVal = core.UpdateReturn{Action: core.DrawSavings}
-	} else { // take out a loan
-		returnVal = core.UpdateReturn{Action: core.RequestLoan}
+	var finance core.ActionType = core.Nothing
+
+	if balance < totalSpending {
+		if balance + f.bankBalance >= totalSpending {
+			finance = core.DrawSavings
+		} else { // take out a loan
+			finance = core.RequestLoan
+		}
 	}
 
-	return returnVal
+	return core.UpdateReturn{
+		Action:  action,
+		Count:   count,
+		Finance: finance,
+	}
 }
 
 func (f *Firm) AddLoan(loan *Loan) {

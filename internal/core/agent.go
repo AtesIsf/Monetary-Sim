@@ -33,8 +33,9 @@ const (
 )
 
 type UpdateReturn struct {
-	Action ActionType
-	Count  uint32
+	Action  ActionType
+	Count   uint32
+	Finance ActionType
 }
 
 // These help identify what type of agent
