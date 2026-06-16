@@ -139,13 +139,8 @@ func TestBank_IssueLoan(t *testing.T) {
 	if loan.to.Id != 1 {
 		t.Errorf("expected loan to 1, got %d", loan.to.Id)
 	}
-	// interest is 5, amount is 200. amountWithInterest is 200 * 5 / 100 = 10? Wait.
-	// Oh, wait, in bank.go line 55: amountWithInterest := amount * int64(interest) / 100
-	// Wait, is it amount * int64(interest) / 100, or amount + amount * int64(interest) / 100?
-	// Let's check bank.go: amountWithInterest := amount * int64(interest) / 100.
-	// That means it's 200 * 5 / 100 = 10! Wait! If it's 10, then the remaining amount is 10.
-	// Let's check:
-	expectedAmount := uint64(200 * 5 / 100) // 10
+	// Loan formula: amount + (amount * interest / 100) = 200 + (200 * 5 / 100) = 210
+	expectedAmount := uint64(200 + 200*5/100) // 210
 	if loan.initialAmount != expectedAmount {
 		t.Errorf("expected initialAmount to be %d, got %d", expectedAmount, loan.initialAmount)
 	}
@@ -193,21 +188,38 @@ func TestBank_Update_InterestCalculation(t *testing.T) {
 	b := NewBank(0)
 	b.demandDeposits[1] = 1000
 
+	var ld core.Ledger
+	ld.Init()
+	ld.AddToBalance(0, 5000) // Bank ledger balance
+	ld.AddToBalance(1, 200)  // Depositor ledger balance
+
 	var pol core.Policies
 	pol.Populate() // interestRate is 4
 
 	// When ticks % 12 != 0, nothing changes
-	b.Update(&pol, nil, dummyMacroTracker{}, 1)
+	b.Update(&pol, &ld, dummyMacroTracker{}, 1)
 	if got := b.QueryDeposits(1); got != 1000 {
 		t.Errorf("expected deposits to remain 1000 on tick 1, got %d", got)
+	}
+	if got := ld.GetBalance(0); got != 5000 {
+		t.Errorf("expected bank ledger balance to remain 5000 on non-annual tick, got %d", got)
 	}
 
 	// When ticks % 12 == 0, interest is added
 	// rate = policy interest rate (4) - 2 = 2.
-	// interest added = 1000 * 2 / 100 = 20.
-	// New balance = 1020.
-	b.Update(&pol, nil, dummyMacroTracker{}, 12)
+	// interest = 1000 * 2 / 100 = 20.
+	// New deposit balance = 1020.
+	// Bank ledger: 5000 - 20 = 4980 (transferred interest to depositor).
+	// Depositor ledger: 200 + 20 = 220 (received interest).
+	// Total money is conserved: 5200 → 4980 + 220 = 5200.
+	b.Update(&pol, &ld, dummyMacroTracker{}, 12)
 	if got := b.QueryDeposits(1); got != 1020 {
 		t.Errorf("expected deposits to be 1020 after interest update, got %d", got)
+	}
+	if got := ld.GetBalance(0); got != 4980 {
+		t.Errorf("expected bank ledger balance to be 4980 after interest transfer, got %d", got)
+	}
+	if got := ld.GetBalance(1); got != 220 {
+		t.Errorf("expected depositor ledger balance to be 220 after interest receipt, got %d", got)
 	}
 }
