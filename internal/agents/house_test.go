@@ -92,10 +92,17 @@ func TestConsumption_Employed(t *testing.T) {
 
 	var mt core.MacroTracker = dummyMacroTracker{}
 
-	// Employed consumption: c0 * 1.0 + mpcB * 100 + mpcY * StandardWage => 5 + 5 + 0.8 * 20 = 26
+	// Employed consumption with default wageExpectation (20): c0 * 1.0 + mpcB * 100 + mpcY * 20 => 5 + 5 + 0.8 * 20 = 26
 	got := h.CalculateConsumption(&ld, &mt)
 	if got != 26 {
 		t.Errorf("expected consumption to be 26, got %d", got)
+	}
+
+	// Change wageExpectation to 30: c0 * 1.0 + mpcB * 100 + mpcY * 30 => 5 + 5 + 0.8 * 30 = 34
+	h.wageExpectation = 30
+	got = h.CalculateConsumption(&ld, &mt)
+	if got != 34 {
+		t.Errorf("expected consumption to be 34, got %d", got)
 	}
 }
 
@@ -117,7 +124,7 @@ func TestConsumption_NegativeBalance(t *testing.T) {
 	}
 }
 
-func TestConsumption_MutatesC0(t *testing.T) {
+func TestConsumption_NoMutationC0(t *testing.T) {
 	h := NewHousehold(1)
 	h.c0 = 5
 
@@ -126,19 +133,26 @@ func TestConsumption_MutatesC0(t *testing.T) {
 
 	var mt core.MacroTracker = dummyMacroTracker{}
 
-	// The current codebase mutates h.c0. Let's verify it mutates:
 	_ = h.CalculateConsumption(&ld, &mt)
-	// If it mutates, h.c0 is updated. If inflation is 1.0, it remains 5, but what if inflation is 0.5?
+	// Verify h.c0 remains 5
+	if h.c0 != 5 {
+		t.Errorf("expected c0 to not be mutated, got %d", h.c0)
+	}
+
 	// Let's use a tracker with 0.5 inflation:
 	mtHalf := mockMacro{inflation: 0.5}
 	var mtHalfTracker core.MacroTracker = mtHalf
-	_ = h.CalculateConsumption(&ld, &mtHalfTracker)
-	if h.c0 != 2 { // 5 * 0.5 = 2.5 floored to 2
-		t.Errorf("expected c0 to be mutated to 2, got %d", h.c0)
+	got := h.CalculateConsumption(&ld, &mtHalfTracker)
+	// 5 * 0.5 = 2.5 floored to 2
+	if got != 2 {
+		t.Errorf("expected consumption to be 2, got %d", got)
+	}
+	if h.c0 != 5 {
+		t.Errorf("expected c0 to remain 5, got %d", h.c0)
 	}
 }
 
-func TestConsumption_C0_DeflationCollapse(t *testing.T) {
+func TestConsumption_NoC0DeflationCollapse(t *testing.T) {
 	h := NewHousehold(1)
 	h.c0 = 5
 
@@ -148,16 +162,11 @@ func TestConsumption_C0_DeflationCollapse(t *testing.T) {
 	mtDeflation := mockMacro{inflation: 0.8}
 	var mtDeflationTracker core.MacroTracker = mtDeflation
 	// Call CalculateConsumption repeatedly:
-	// 5 * 0.8 = 4
-	// 4 * 0.8 = 3
-	// 3 * 0.8 = 2
-	// 2 * 0.8 = 1
-	// 1 * 0.8 = 0
 	for range 5 {
 		_ = h.CalculateConsumption(&ld, &mtDeflationTracker)
 	}
-	if h.c0 != 0 {
-		t.Errorf("expected c0 to collapse to 0 under deflation mutation, got %d", h.c0)
+	if h.c0 != 5 {
+		t.Errorf("expected c0 to remain 5 under deflation, got %d", h.c0)
 	}
 }
 

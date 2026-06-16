@@ -118,12 +118,12 @@ func (h *Household) GetType() core.AgentType {
 
 func (h *Household) CalculateConsumption(ld *core.Ledger, 
 																				macro *core.MacroTracker) int64 {
-	h.c0 = uint32(float64(h.c0) * (*macro).GetInflationRate())
+	currentC0 := uint32(float64(h.c0) * (*macro).GetInflationRate())
 	balanceConsumption := h.mpcB * max(float64(ld.GetBalance(h.GetId())), 0)
-	totalC := float64(h.c0) + balanceConsumption
+	totalC := float64(currentC0) + balanceConsumption
 
 	if h.IsEmployed() {
-		totalC += h.mpcY * float64(core.StandardWage)
+		totalC += h.mpcY * float64(h.wageExpectation)
 	}
 	return int64(totalC)
 }
