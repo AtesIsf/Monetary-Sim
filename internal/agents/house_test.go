@@ -456,7 +456,7 @@ func TestHouse_DepositExtra(t *testing.T) {
 	ld.AddToBalance(0, 1000)
 
 	h := NewHousehold(1)
-	h.DepositExtra(b, &ld)
+	h.DepositExtra(b, &ld, 0)
 
 	if got := ld.GetBalance(1); got != core.MaxLiquidity {
 		t.Errorf("expected ledger balance to be core.MaxLiquidity, got %d", got)

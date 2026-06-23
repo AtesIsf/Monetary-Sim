@@ -171,6 +171,14 @@ func (sim *Simulation) Run(ticks uint64) {
 					firm.PayWages(&sim.ld)
 				}
 
+				if ag.GetType() == core.Firm {
+					f, _ := ag.(*agents.Firm)
+					f.DepositExtra(&sim.bank, &sim.ld, sim.pol.GetInterestRate())
+				} else if ag.GetType() == core.Household {
+					h, _ := ag.(*agents.Household)
+					h.DepositExtra(&sim.bank, &sim.ld, sim.pol.GetInterestRate())
+				}
+
 				// Annualize loans -> not really realistic
 				if sim.tick % 12 != 0 {
 					return	
@@ -179,11 +187,9 @@ func (sim *Simulation) Run(ticks uint64) {
 				if ag.GetType() == core.Firm {
 					f, _ := ag.(*agents.Firm)
 					f.RepayLoans(&sim.bank, &sim.ld)
-					f.DepositExtra(&sim.bank, &sim.ld, sim.pol.GetInterestRate())
 				} else if ag.GetType() == core.Household {
 					h, _ := ag.(*agents.Household)
 					h.RepayLoans(&sim.bank, &sim.ld)
-					h.DepositExtra(&sim.bank, &sim.ld, sim.pol.GetInterestRate())
 				}
 
 				// For debug purposes

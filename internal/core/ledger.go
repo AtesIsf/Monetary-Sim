@@ -18,7 +18,7 @@ const MinWage = 1
 // the base price of a good or service
 const Price = 20
 const MinPrice = 1
-const MaxLiquidity = 150
+const MaxLiquidity = 80
 
 type Ledger struct {
 	balanceMutex sync.RWMutex

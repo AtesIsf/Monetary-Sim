@@ -146,7 +146,10 @@ func TestRun_ConsumeCycle(t *testing.T) {
 	}
 
 	sim.ld.AddToBalance(house.GetId(), 1000)
-	firmInitialBal := sim.ld.GetBalance(firm.GetId())
+	// Clear firm balance and set to 50 so it is below MaxLiquidity and doesn't deposit extra cash
+	sim.ld.Transfer(firm.GetId(), sim.bank.GetId(), sim.ld.GetBalance(firm.GetId()))
+	sim.ld.AddToBalance(firm.GetId(), 50)
+	firmInitialBal := int64(50)
 	firm.AddInventory(10)
 
 	sim.Run(1)
@@ -158,7 +161,7 @@ func TestRun_ConsumeCycle(t *testing.T) {
 
 func TestRun_DrawSavings_NoConsumption(t *testing.T) {
 	var sim Simulation
-	sim.Populate(1, 1)
+	sim.Populate(1, 0)
 	defer sim.Close()
 
 	// Set tick to 1 to avoid yearly resets
@@ -179,11 +182,14 @@ func TestRun_DrawSavings_NoConsumption(t *testing.T) {
 
 	sim.Run(1)
 
-	if got := sim.ld.GetBalance(house.GetId()); got < 200 {
-		t.Errorf("expected household to have withdrawn savings, got balance %d", got)
+	expectedMaxLiq := int64(core.MaxLiquidity * (100 - sim.pol.GetInterestRate()) / 100)
+	expectedDeposits := int64(200) - expectedMaxLiq
+
+	if got := sim.ld.GetBalance(house.GetId()); got != expectedMaxLiq {
+		t.Errorf("expected household ledger balance to be %d, got %d", expectedMaxLiq, got)
 	}
-	if got := sim.bank.QueryDeposits(house.GetId()); got != 0 {
-		t.Errorf("expected bank deposits to be 0, got %d", got)
+	if got := sim.bank.QueryDeposits(house.GetId()); got != expectedDeposits {
+		t.Errorf("expected bank deposits to be %d, got %d", expectedDeposits, got)
 	}
 }
 
@@ -224,7 +230,7 @@ func TestRun_FirmNothing_WagesNotPaid(t *testing.T) {
 	firm.AddEmployee(house.GetId())
 	house.SetEmployer(firm.GetId())
 
-	sim.ld.AddToBalance(firm.GetId(), 1000)
+	sim.ld.AddToBalance(firm.GetId(), 50)
 	sim.ld.SetWageExpectation(house.GetId(), 20)
 
 	sim.agentsMutex.Lock()

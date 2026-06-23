@@ -378,11 +378,11 @@ func TestFirm_DepositExtra_AboveThreshold(t *testing.T) {
 	b := NewBank(0)
 	var ld core.Ledger
 	ld.Init()
-	ld.AddToBalance(1, core.MaxLiquidity+100) // 150 + 100 = 250
+	ld.AddToBalance(1, core.MaxLiquidity+100) // 80 + 100 = 180
 	ld.AddToBalance(0, 1000)                 // bank ledger balance
 
 	f := NewFirm(1)
-	f.DepositExtra(b, &ld)
+	f.DepositExtra(b, &ld, 0)
 
 	if got := ld.GetBalance(1); got != core.MaxLiquidity {
 		t.Errorf("expected firm ledger balance to be core.MaxLiquidity (%d), got %d", core.MaxLiquidity, got)
@@ -403,7 +403,7 @@ func TestFirm_DepositExtra_BelowThreshold(t *testing.T) {
 	ld.AddToBalance(0, 1000)
 
 	f := NewFirm(1)
-	f.DepositExtra(b, &ld)
+	f.DepositExtra(b, &ld, 0)
 
 	if got := ld.GetBalance(1); got != core.MaxLiquidity-50 {
 		t.Errorf("expected firm ledger balance to remain same, got %d", got)
