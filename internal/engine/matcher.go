@@ -17,7 +17,7 @@ func NewMatcher(sim *Simulation) *Matcher {
 
 func (m *Matcher) BuyGoods(buyer *agents.Household, ld *core.Ledger) {
 	var tracker core.MacroTracker = m.sim
-	maxAmount := buyer.CalculateConsumption(ld, &tracker)
+	maxAmount := buyer.CalculateConsumption(ld, &tracker, m.sim.pol.GetInterestRate())
 	if maxAmount <= 0 {
 		return
 	}

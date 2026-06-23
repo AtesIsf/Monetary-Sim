@@ -73,7 +73,7 @@ func TestConsumption_Unemployed(t *testing.T) {
 	var mt core.MacroTracker = dummyMacroTracker{}
 
 	// Unemployed consumption: c0 * inflationRate (1.0) + mpcB * balance => 5 * 1.0 + 0.05 * 100 = 10
-	got := h.CalculateConsumption(&ld, &mt)
+	got := h.CalculateConsumption(&ld, &mt, 0)
 	if got != 10 {
 		t.Errorf("expected consumption to be 10, got %d", got)
 	}
@@ -93,14 +93,14 @@ func TestConsumption_Employed(t *testing.T) {
 	var mt core.MacroTracker = dummyMacroTracker{}
 
 	// Employed consumption with default wageExpectation (20): c0 * 1.0 + mpcB * 100 + mpcY * 20 => 5 + 5 + 0.8 * 20 = 26
-	got := h.CalculateConsumption(&ld, &mt)
+	got := h.CalculateConsumption(&ld, &mt, 0)
 	if got != 26 {
 		t.Errorf("expected consumption to be 26, got %d", got)
 	}
 
 	// Change wageExpectation to 30: c0 * 1.0 + mpcB * 100 + mpcY * 30 => 5 + 5 + 0.8 * 30 = 34
 	h.wageExpectation = 30
-	got = h.CalculateConsumption(&ld, &mt)
+	got = h.CalculateConsumption(&ld, &mt, 0)
 	if got != 34 {
 		t.Errorf("expected consumption to be 34, got %d", got)
 	}
@@ -118,7 +118,7 @@ func TestConsumption_NegativeBalance(t *testing.T) {
 	var mt core.MacroTracker = dummyMacroTracker{}
 
 	// Negative balance clamped to 0: 5 + 0 = 5
-	got := h.CalculateConsumption(&ld, &mt)
+	got := h.CalculateConsumption(&ld, &mt, 0)
 	if got != 5 {
 		t.Errorf("expected consumption to be 5, got %d", got)
 	}
@@ -133,7 +133,7 @@ func TestConsumption_NoMutationC0(t *testing.T) {
 
 	var mt core.MacroTracker = dummyMacroTracker{}
 
-	_ = h.CalculateConsumption(&ld, &mt)
+	_ = h.CalculateConsumption(&ld, &mt, 0)
 	// Verify h.c0 remains 5
 	if h.c0 != 5 {
 		t.Errorf("expected c0 to not be mutated, got %d", h.c0)
@@ -142,7 +142,7 @@ func TestConsumption_NoMutationC0(t *testing.T) {
 	// Let's use a tracker with 0.5 inflation:
 	mtHalf := mockMacro{inflation: 0.5}
 	var mtHalfTracker core.MacroTracker = mtHalf
-	got := h.CalculateConsumption(&ld, &mtHalfTracker)
+	got := h.CalculateConsumption(&ld, &mtHalfTracker, 0)
 	// 5 * 0.5 = 2.5 floored to 2
 	if got != 2 {
 		t.Errorf("expected consumption to be 2, got %d", got)
@@ -163,7 +163,7 @@ func TestConsumption_NoC0DeflationCollapse(t *testing.T) {
 	var mtDeflationTracker core.MacroTracker = mtDeflation
 	// Call CalculateConsumption repeatedly:
 	for range 5 {
-		_ = h.CalculateConsumption(&ld, &mtDeflationTracker)
+		_ = h.CalculateConsumption(&ld, &mtDeflationTracker, 0)
 	}
 	if h.c0 != 5 {
 		t.Errorf("expected c0 to remain 5 under deflation, got %d", h.c0)
@@ -505,5 +505,33 @@ func TestHouse_Update_RateSensitiveBorrowing(t *testing.T) {
 				t.Errorf("got Finance %d, want %d", got.Finance, tt.expectedFinance)
 			}
 		})
+	}
+}
+
+func TestCalculateConsumption_RateSensitive(t *testing.T) {
+	h := NewHousehold(1)
+	h.c0 = 5
+	h.mpcB = 0.05
+	h.mpcY = 0.0
+
+	var ld core.Ledger
+	ld.Init()
+	ld.AddToBalance(1, 100)
+
+	var mt core.MacroTracker = dummyMacroTracker{}
+
+	// Rate = 0: c0 * 1.0 + mpcB * 100 * (100-0)/100 => 5 + 5 = 10
+	gotLow := h.CalculateConsumption(&ld, &mt, 0)
+	// Rate = 20: c0 * 1.0 + mpcB * 100 * (100-20)/100 => 5 + 5 * 0.8 = 9
+	gotHigh := h.CalculateConsumption(&ld, &mt, 20)
+
+	if gotLow != 10 {
+		t.Errorf("expected low rate consumption to be 10, got %d", gotLow)
+	}
+	if gotHigh != 9 {
+		t.Errorf("expected high rate consumption to be 9, got %d", gotHigh)
+	}
+	if gotHigh >= gotLow {
+		t.Errorf("expected high rate consumption (%d) to be less than low rate (%d)", gotHigh, gotLow)
 	}
 }

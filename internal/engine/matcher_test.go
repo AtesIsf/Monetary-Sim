@@ -106,7 +106,7 @@ func TestBuyGoods_RoundsDownToMultiple(t *testing.T) {
 	firm.AddInventory(100)
 	
 	var tracker core.MacroTracker = &sim
-	maxC := buyer.CalculateConsumption(&sim.ld, &tracker)
+	maxC := buyer.CalculateConsumption(&sim.ld, &tracker, sim.pol.GetInterestRate())
 	price := int64(firm.GetPrice()) // 20
 	expectedTransfer := maxC - maxC%price
 
