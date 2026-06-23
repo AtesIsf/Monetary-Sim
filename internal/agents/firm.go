@@ -245,11 +245,13 @@ func (f *Firm) AddLoan(loan *Loan) {
 	f.loans = append(f.loans, loan)
 }
 
-func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger) {
-	if ld.GetBalance(f.GetId()) <= core.MaxLiquidity {
+func (f *Firm) DepositExtra(bank *Bank, ld *core.Ledger, 
+														polRate uint32) {
+	scaledMaxLiquidity := core.MaxLiquidity * (100 - polRate) / 100
+	if ld.GetBalance(f.GetId()) <= int64(scaledMaxLiquidity) {
 		return
 	}
-	difference := ld.GetBalance(f.GetId()) - core.MaxLiquidity
+	difference := ld.GetBalance(f.GetId()) - int64(scaledMaxLiquidity)
 	bank.AddDemandDeposit(f.GetId(), difference, ld)
 	f.firmStateMutex.Lock()
 	f.bankBalance += difference

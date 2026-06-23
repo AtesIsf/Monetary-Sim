@@ -183,11 +183,13 @@ func (h *Household) RepayLoans(bank *Bank, ld *core.Ledger) {
 	h.loans = newLoans
 }
 
-func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger) {
-	if ld.GetBalance(h.GetId()) <= core.MaxLiquidity {
+func (h *Household) DepositExtra(bank *Bank, ld *core.Ledger, 
+																 polRate uint32) {
+	scaledMaxLiquidity := core.MaxLiquidity * (100 - polRate) / 100
+	if ld.GetBalance(h.GetId()) <= int64(scaledMaxLiquidity) {
 		return
 	}
-	difference := ld.GetBalance(h.GetId()) - core.MaxLiquidity
+	difference := ld.GetBalance(h.GetId()) - int64(scaledMaxLiquidity)
 	bank.AddDemandDeposit(h.GetId(), difference, ld)
 	h.bankBalance += difference
 }

@@ -11,9 +11,9 @@ func main() {
 	sim.Populate(1000, 100)
 	defer sim.Close()
 
-	// 4 -> 8 -> 2
+	// 4 -> 20 -> 2
 	sim.Run(360)
-	sim.UpdatePolicyRate(8)
+	sim.UpdatePolicyRate(20)
 	sim.Run(360)
 	sim.UpdatePolicyRate(2)
 	sim.Run(360)
