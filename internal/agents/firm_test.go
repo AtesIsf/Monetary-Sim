@@ -118,6 +118,7 @@ func TestFirm_Update_HireWhenUnderTarget(t *testing.T) {
 	f := NewFirm(1)
 	f.invTarget = 25
 	f.invCurr = 20
+	f.prevInventory = 0
 	var ld core.Ledger
 	ld.Init()
 	ld.AddToBalance(1, 1000)
@@ -207,6 +208,7 @@ func TestFirm_Update_FundingCheck(t *testing.T) {
 			f := NewFirm(1)
 			f.invTarget = 25
 			f.invCurr = 0
+			f.prevInventory = 0
 			for _, emp := range tt.employees {
 				f.AddEmployee(emp)
 			}
@@ -436,6 +438,7 @@ func TestFirm_Update_RateSensitiveBorrowing(t *testing.T) {
 			f := NewFirm(1)
 			f.invTarget = 25
 			f.invCurr = 0
+			f.prevInventory = 0
 			f.AddEmployee(2) // expects wage 20
 			f.bankBalance = 0
 

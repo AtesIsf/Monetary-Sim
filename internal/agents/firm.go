@@ -20,6 +20,7 @@ type Firm struct {
 	invTarget uint32 // targeted inventory, measured in units of goods
 	invCurr uint32 // current sold inventory, in units
 	inventory uint32 // current unsold stock
+	prevInventory uint32 // snapshot of unsold stock before production
 	employees []uint32 // ids of employees
 	stockPrice int
 
@@ -168,6 +169,7 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	var count uint32 = 0
 
 	f.firmStateMutex.Lock()
+	f.prevInventory = f.inventory
 	if tick % core.TicksPerYear == 0 {
 		f.invCurr = 0 // reset tracked value since it is a new year
 	}
