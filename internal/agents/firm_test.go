@@ -412,3 +412,46 @@ func TestFirm_DepositExtra_BelowThreshold(t *testing.T) {
 		t.Errorf("expected demand deposits to be 0, got %d", got)
 	}
 }
+
+func TestFirm_Update_RateSensitiveBorrowing(t *testing.T) {
+	tests := []struct {
+		name            string
+		policyRate      uint32
+		expectedFinance core.ActionType
+	}{
+		{
+			name:            "interest rate below threshold",
+			policyRate:      10,
+			expectedFinance: core.RequestLoan,
+		},
+		{
+			name:            "interest rate above threshold",
+			policyRate:      20,
+			expectedFinance: core.Nothing,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewFirm(1)
+			f.invTarget = 25
+			f.invCurr = 0
+			f.AddEmployee(2) // expects wage 20
+			f.bankBalance = 0
+
+			var ld core.Ledger
+			ld.Init()
+			ld.AddToBalance(1, 0) // short of cash
+			ld.SetWageExpectation(2, 20)
+
+			var pol core.Policies
+			pol.Populate()
+			pol.SetInterestRate(tt.policyRate)
+
+			got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
+			if got.Finance != tt.expectedFinance {
+				t.Errorf("got Finance %d, want %d", got.Finance, tt.expectedFinance)
+			}
+		})
+	}
+}

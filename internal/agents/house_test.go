@@ -465,3 +465,45 @@ func TestHouse_DepositExtra(t *testing.T) {
 		t.Errorf("expected bankBalance to be 100, got %d", h.bankBalance)
 	}
 }
+
+func TestHouse_Update_RateSensitiveBorrowing(t *testing.T) {
+	tests := []struct {
+		name            string
+		policyRate      uint32
+		expectedFinance core.ActionType
+	}{
+		{
+			name:            "interest rate below threshold",
+			policyRate:      10,
+			expectedFinance: core.RequestLoan,
+		},
+		{
+			name:            "interest rate above threshold",
+			policyRate:      20,
+			expectedFinance: core.Nothing,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			h := NewHousehold(1)
+			h.c0 = 30
+			h.mpcB = 0.0
+			h.mpcY = 0.0
+			h.bankBalance = 5
+
+			var ld core.Ledger
+			ld.Init()
+			ld.AddToBalance(1, 5) // balance + savings = 10 < consumption (30)
+
+			var pol core.Policies
+			pol.Populate()
+			pol.SetInterestRate(tt.policyRate)
+
+			got := h.Update(&pol, &ld, mockMacro{unemployment: 0.06, inflation: 1.0}, 1)
+			if got.Finance != tt.expectedFinance {
+				t.Errorf("got Finance %d, want %d", got.Finance, tt.expectedFinance)
+			}
+		})
+	}
+}

@@ -224,7 +224,7 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	if balance < totalSpending {
 		if balance + f.bankBalance >= totalSpending {
 			finance = core.DrawSavings
-		} else { // take out a loan
+		} else if pol.GetInterestRate() <= core.MaxBorrowRate { // take out a loan
 			finance = core.RequestLoan
 		}
 	}

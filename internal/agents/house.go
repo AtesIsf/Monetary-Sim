@@ -105,7 +105,7 @@ func (h *Household) Update(pol *core.Policies, ld *core.Ledger,
 	if balance < consumption {
 		if balance + int64(h.bankBalance) >= consumption {
 			finance = core.DrawSavings
-		} else {
+		} else if pol.GetInterestRate() <= core.MaxBorrowRate {
 			finance = core.RequestLoan
 		}
 	}
