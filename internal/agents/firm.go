@@ -177,7 +177,7 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 	// 1 unit produced per employee per tick
 	f.inventory += uint32(len(f.employees))
 
-	if f.invCurr < f.invTarget { // Underproducing, so hire
+	if f.invCurr < f.invTarget && f.prevInventory == 0 { // Underproducing and no carry-over inventory, so hire
 		action = core.HireWorkers
 		delta := int64(f.invTarget) - int64(f.invCurr)
 		ticksRemaining := 12 - (tick % 12)
@@ -187,9 +187,14 @@ func (f *Firm) Update(pol *core.Policies, ld *core.Ledger,
 		if count == 0 {
 			count = 1
 		}
-	} else if f.invCurr > f.invTarget && len(f.employees) > 0 { // Overproducing
+	} else if (f.invCurr > f.invTarget || (f.invCurr < f.invTarget && f.prevInventory > 0)) && len(f.employees) > 0 { // Overproducing or weak demand (carry-over inventory)
 		action = core.FireWorkers
-		delta := int64(f.invCurr) - int64(f.invTarget)
+		var delta int64
+		if f.invCurr > f.invTarget {
+			delta = int64(f.invCurr) - int64(f.invTarget)
+		} else {
+			delta = int64(f.invTarget) - int64(f.invCurr)
+		}
 		ticksRemaining := 12 - (tick % 12)
 		if ticksRemaining > 0 {
 			count = uint32(delta / int64(ticksRemaining))

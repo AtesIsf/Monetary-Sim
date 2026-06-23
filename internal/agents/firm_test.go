@@ -458,3 +458,24 @@ func TestFirm_Update_RateSensitiveBorrowing(t *testing.T) {
 		})
 	}
 }
+
+func TestFirm_Update_FireWhenDemandWeak(t *testing.T) {
+	f := NewFirm(1)
+	f.invTarget = 25
+	f.invCurr = 0
+	f.inventory = 10
+	f.AddEmployee(2) // 1 employee
+
+	var ld core.Ledger
+	ld.Init()
+	ld.AddToBalance(1, 1000)
+
+	var pol core.Policies
+	pol.Populate()
+
+	got := f.Update(&pol, &ld, dummyMacroTracker{}, 1)
+	if got.Action != core.FireWorkers {
+		t.Errorf("expected FireWorkers when demand is weak, got %d", got.Action)
+	}
+}
+
